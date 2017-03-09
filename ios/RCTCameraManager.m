@@ -31,10 +31,8 @@ RCT_EXPORT_MODULE();
 - (UIView *)view
 {
   self.session = [AVCaptureSession new];
-  #if !(TARGET_IPHONE_SIMULATOR)
-    self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
-    self.previewLayer.needsDisplayOnBoundsChange = YES;
-  #endif
+  self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
+  self.previewLayer.needsDisplayOnBoundsChange = YES;
 
   if(!self.camera){
     self.camera = [[RCTCamera alloc] initWithManager:self bridge:self.bridge];
@@ -318,6 +316,7 @@ RCT_CUSTOM_VIEW_PROPERTY(captureAudio, BOOL, RCTCamera) {
 - (id)init {
   if ((self = [super init])) {
     self.mirrorImage = false;
+    self.cropToViewport = false;
 
     self.sessionQueue = dispatch_queue_create("cameraManagerQueue", DISPATCH_QUEUE_SERIAL);
 
@@ -563,8 +562,15 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
 {
   dispatch_async(self.sessionQueue, ^{
 #if TARGET_IPHONE_SIMULATOR
-      CGSize size = CGSizeMake(720, 1280);
-      UIGraphicsBeginImageContextWithOptions(size, YES, 0);
+    CGSize size;
+
+    if (self.cropToViewport) {
+      size = CGSizeMake(self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
+    } else {
+      size = (orientation == AVCaptureVideoOrientationPortrait || orientation == AVCaptureVideoOrientationPortraitUpsideDown) ? CGSizeMake(720, 1280) : CGSizeMake(1280, 720);
+    }
+    UIGraphicsBeginImageContextWithOptions(size, YES, 0);
+
           // Thanks https://gist.github.com/kylefox/1689973
           CGFloat hue = ( arc4random() % 256 / 256.0 );  //  0.0 to 1.0
           CGFloat saturation = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from white
@@ -576,7 +582,7 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
           NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
           [dateFormatter setDateFormat:@"dd.MM.YY HH:mm:ss"];
           NSString *text = [dateFormatter stringFromDate:currentDate];
-          UIFont *font = [UIFont systemFontOfSize:40.0];
+          UIFont *font = [UIFont systemFontOfSize:size.width * .05];
           NSDictionary *attributes = [NSDictionary dictionaryWithObjects:
                                       @[font, [UIColor blackColor]]
                                                                  forKeys:
