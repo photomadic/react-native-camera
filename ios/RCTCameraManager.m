@@ -679,45 +679,49 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
 
 
 - (void)saveImage:(NSData*)imageData target:(NSInteger)target metadata:(NSDictionary *)metadata resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
-  NSString *responseString;
+    switch (target) {
+        case RCTCameraCaptureTargetMemory: {
+            resolve(@{@"data":[imageData base64EncodedStringWithOptions:0]});
+            break;
+        }
 
-  if (target == RCTCameraCaptureTargetMemory) {
-    resolve(@{@"data":[imageData base64EncodedStringWithOptions:0]});
-    return;
-  }
+        case RCTCameraCaptureTargetDisk: {
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *documentsDirectory = [paths firstObject];
 
-  else if (target == RCTCameraCaptureTargetDisk) {
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths firstObject];
+            NSFileManager *fileManager = [NSFileManager defaultManager];
+            NSString *fullPath = [[documentsDirectory stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]] stringByAppendingPathExtension:@"jpg"];
 
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *fullPath = [[documentsDirectory stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]] stringByAppendingPathExtension:@"jpg"];
+            [fileManager createFileAtPath:fullPath contents:imageData attributes:nil];
+            resolve(@{@"path":fullPath});
+            break;
+        }
 
-    [fileManager createFileAtPath:fullPath contents:imageData attributes:nil];
-    responseString = fullPath;
-  }
+        case RCTCameraCaptureTargetTemp: {
+            NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+            NSString *fullPath = [NSString stringWithFormat:@"%@%@.jpg", NSTemporaryDirectory(), fileName];
 
-  else if (target == RCTCameraCaptureTargetTemp) {
-    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
-    NSString *fullPath = [NSString stringWithFormat:@"%@%@.jpg", NSTemporaryDirectory(), fileName];
+            [imageData writeToFile:fullPath atomically:YES];
+            resolve(@{@"path":fullPath});
+            break;
+        }
 
-    [imageData writeToFile:fullPath atomically:YES];
-    responseString = fullPath;
-  }
+        case RCTCameraCaptureTargetCameraRoll: {
+            [[[ALAssetsLibrary alloc] init] writeImageDataToSavedPhotosAlbum:imageData metadata:metadata completionBlock:^(NSURL* url, NSError* error) {
+                if (error == nil) {
+                    resolve(@{@"path":[url absoluteString], @"mediaUri":[url absoluteString]});
+                }
+                else {
+                    reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(error.description));
+                }
+            }];
+            break;
+        }
 
-  else if (target == RCTCameraCaptureTargetCameraRoll) {
-    [[[ALAssetsLibrary alloc] init] writeImageDataToSavedPhotosAlbum:imageData metadata:metadata completionBlock:^(NSURL* url, NSError* error) {
-      if (error == nil) {
-        //path isn't really applicable here (this is an asset uri), but left it in for backward comparability
-        resolve(@{@"path":[url absoluteString], @"mediaUri":[url absoluteString]});
-      }
-      else {
-        reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(error.description));
-      }
-    }];
-    return;
-  }
-  resolve(@{@"path":responseString});
+        default:
+            reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(@"invalid target"));
+            break;
+    }
 }
 
 - (CGImageRef)newCGImageRotatedByAngle:(CGImageRef)imgRef angle:(CGFloat)angle
