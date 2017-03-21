@@ -69,6 +69,7 @@ typedef NS_ENUM(NSInteger, RCTCameraTorchMode) {
 @property (nonatomic, strong) id runtimeErrorHandlingObserver;
 @property (nonatomic, assign) NSInteger presetCamera;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
+@property (nonatomic, strong) CALayer *brandingLayer;
 @property (nonatomic, assign) NSInteger videoTarget;
 @property (nonatomic, assign) NSInteger orientation;
 @property (nonatomic, assign) BOOL mirrorImage;
@@ -77,6 +78,7 @@ typedef NS_ENUM(NSInteger, RCTCameraTorchMode) {
 @property (nonatomic, strong) RCTPromiseRejectBlock videoReject;
 @property (nonatomic, strong) RCTCamera *camera;
 @property (nonatomic, assign) BOOL cropToViewport;
+@property (nonatomic, strong) UIImage *overlayImage;
 
 
 - (void)changeOrientation:(NSInteger)orientation;

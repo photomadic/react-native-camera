@@ -11,6 +11,8 @@ import {
   ViewPropTypes
 } from 'react-native';
 
+import ImageSourcePropType from 'react-native/Libraries/Image/ImageSourcePropType'
+
 const CameraManager = NativeModules.CameraManager || NativeModules.CameraModule;
 const CAMERA_REF = 'camera';
 
@@ -116,7 +118,8 @@ export default class Camera extends Component {
     type: PropTypes.oneOfType([
       PropTypes.string,
       PropTypes.number
-    ])
+    ]),
+    overlayImage: ImageSourcePropType,
   };
 
   static defaultProps = {
@@ -133,7 +136,7 @@ export default class Camera extends Component {
     playSoundOnCapture: true,
     torchMode: CameraManager.TorchMode.off,
     mirrorImage: false,
-    barCodeTypes: Object.values(CameraManager.BarCodeType),
+    barCodeTypes: Object.values(CameraManager.BarCodeType)
   };
 
   static checkDeviceAuthorizationStatus = CameraManager.checkDeviceAuthorizationStatus;
@@ -224,6 +227,7 @@ export default class Camera extends Component {
       description: '',
       mirrorImage: props.mirrorImage,
       fixOrientation: props.fixOrientation,
+      overlayImage: props.overlayImage,
       ...options
     };
 

@@ -64,7 +64,7 @@
 
 - (id)initWithManager:(RCTCameraManager*)manager bridge:(RCTBridge *)bridge
 {
-  
+
   if ((self = [super init])) {
     self.manager = manager;
     self.bridge = bridge;
@@ -83,15 +83,24 @@
 
 - (void)layoutSubviews
 {
-  [super layoutSubviews];
-  self.manager.previewLayer.frame = self.bounds;
-  [self setBackgroundColor:[UIColor blackColor]];
-  [self.layer insertSublayer:self.manager.previewLayer atIndex:0];
+    [super layoutSubviews];
+    [self setBackgroundColor:[UIColor blackColor]];
+
+    self.manager.previewLayer.frame = self.bounds;
+    self.manager.brandingLayer.frame = self.bounds;
+
+    if (self.manager.previewLayer.superlayer == nil) {
+        [self.layer insertSublayer:self.manager.previewLayer atIndex:0];
+    }
+
+    if (self.manager.brandingLayer.superlayer == nil) {
+        [self.layer insertSublayer:self.manager.brandingLayer atIndex:1];
+    }
 }
 
 - (void)insertReactSubview:(UIView *)view atIndex:(NSInteger)atIndex
 {
-  [self insertSubview:view atIndex:atIndex + 1];
+  [self insertSubview:view atIndex:atIndex + 2];
   return;
 }
 

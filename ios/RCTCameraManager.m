@@ -32,7 +32,9 @@ RCT_EXPORT_MODULE();
 {
   self.session = [AVCaptureSession new];
   self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
+  self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
   self.previewLayer.needsDisplayOnBoundsChange = YES;
+  self.brandingLayer = [CALayer layer];
 
   if(!self.camera){
     self.camera = [[RCTCamera alloc] initWithManager:self bridge:self.bridge];
@@ -303,6 +305,13 @@ RCT_CUSTOM_VIEW_PROPERTY(captureAudio, BOOL, RCTCamera) {
     RCTLog(@"capturing audio");
     [self initializeCaptureSessionInput:AVMediaTypeAudio];
   }
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(overlayImage, UIImage, RCTCamera) {
+    self.overlayImage = [RCTConvert UIImage:json];
+    if (self.overlayImage) {
+        self.brandingLayer.contents = (id)self.overlayImage.CGImage;
+    }
 }
 
 - (NSArray *)customDirectEventTypes
