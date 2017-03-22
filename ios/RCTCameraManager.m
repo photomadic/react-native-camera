@@ -569,121 +569,90 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
 
 - (void)captureStill:(NSInteger)target options:(NSDictionary *)options orientation:(AVCaptureVideoOrientation)orientation resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  dispatch_async(self.sessionQueue, ^{
+    dispatch_async(self.sessionQueue, ^{
 #if TARGET_IPHONE_SIMULATOR
-    CGSize size;
+        CGSize size;
 
-    if (self.cropToViewport) {
-      size = CGSizeMake(self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
-    } else {
-      size = (orientation == AVCaptureVideoOrientationPortrait || orientation == AVCaptureVideoOrientationPortraitUpsideDown) ? CGSizeMake(720, 1280) : CGSizeMake(1280, 720);
-    }
-    UIGraphicsBeginImageContextWithOptions(size, YES, 0);
+        if (self.cropToViewport) {
+            size = CGSizeMake(self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
+        } else {
+            size = (orientation == AVCaptureVideoOrientationPortrait || orientation == AVCaptureVideoOrientationPortraitUpsideDown) ? CGSizeMake(720, 1280) : CGSizeMake(1280, 720);
+        }
+        UIGraphicsBeginImageContextWithOptions(size, YES, 0);
 
-          // Thanks https://gist.github.com/kylefox/1689973
-          CGFloat hue = ( arc4random() % 256 / 256.0 );  //  0.0 to 1.0
-          CGFloat saturation = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from white
-          CGFloat brightness = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from black
-          UIColor *color = [UIColor colorWithHue:hue saturation:saturation brightness:brightness alpha:1];
-          [color setFill];
-          UIRectFill(CGRectMake(0, 0, size.width, size.height));
-          NSDate *currentDate = [NSDate date];
-          NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-          [dateFormatter setDateFormat:@"dd.MM.YY HH:mm:ss"];
-          NSString *text = [dateFormatter stringFromDate:currentDate];
-          UIFont *font = [UIFont systemFontOfSize:size.width * .05];
-          NSDictionary *attributes = [NSDictionary dictionaryWithObjects:
-                                      @[font, [UIColor blackColor]]
-                                                                 forKeys:
-                                      @[NSFontAttributeName, NSForegroundColorAttributeName]];
-          [text drawAtPoint:CGPointMake(size.width/3, size.height/2) withAttributes:attributes];
-          UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-      UIGraphicsEndImageContext();
+        // Thanks https://gist.github.com/kylefox/1689973
+        CGFloat hue = ( arc4random() % 256 / 256.0 );  //  0.0 to 1.0
+        CGFloat saturation = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from white
+        CGFloat brightness = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from black
+        UIColor *color = [UIColor colorWithHue:hue saturation:saturation brightness:brightness alpha:1];
+        [color setFill];
+        UIRectFill(CGRectMake(0, 0, size.width, size.height));
+        NSDate *currentDate = [NSDate date];
+        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+        [dateFormatter setDateFormat:@"dd.MM.YY HH:mm:ss"];
+        NSString *text = [dateFormatter stringFromDate:currentDate];
+        UIFont *font = [UIFont systemFontOfSize:size.width * .05];
+        NSDictionary *attributes = [NSDictionary dictionaryWithObjects:
+                                    @[font, [UIColor blackColor]]
+                                                               forKeys:
+                                    @[NSFontAttributeName, NSForegroundColorAttributeName]];
+        [text drawAtPoint:CGPointMake(size.width/3, size.height/2) withAttributes:attributes];
+        UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
 
-      NSData *imageData = UIImageJPEGRepresentation(image, 1.0);
-      [self saveImage:imageData target:target metadata:nil resolve:resolve reject:reject];
+        NSData *imageData = UIImageJPEGRepresentation(image, 1.0);
+        [self saveImage:imageData target:target metadata:nil resolve:resolve reject:reject];
 #else
-      [[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] setVideoOrientation:orientation];
+        [[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] setVideoOrientation:orientation];
 
-      [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
+        [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
 
-        if (imageDataSampleBuffer) {
-          NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
-
-          // Create image source
-          CGImageSourceRef source = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
-          //get all the metadata in the image
-          NSMutableDictionary *imageMetadata = [(NSDictionary *) CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL)) mutableCopy];
-
-          // create cgimage
-          CGImageRef cgImage = CGImageSourceCreateImageAtIndex(source, 0, NULL);
-
-          // Rotate it
-          CGImageRef rotatedCGImage;
-          if ([options objectForKey:@"rotation"]) {
-            float rotation = [[options objectForKey:@"rotation"] floatValue];
-            rotatedCGImage = [self newCGImageRotatedByAngle:cgImage angle:rotation];
-          } else if ([[options objectForKey:@"fixOrientation"] boolValue] == YES) {
-            // Get metadata orientation
-            int metadataOrientation = [[imageMetadata objectForKey:(NSString *)kCGImagePropertyOrientation] intValue];
-
-            bool rotated = false;
-            //see http://www.impulseadventure.com/photo/exif-orientation.html
-            if (metadataOrientation == 6) {
-              rotatedCGImage = [self newCGImageRotatedByAngle:cgImage angle:270];
-              rotated = true;
-            } else if (metadataOrientation == 3) {
-              rotatedCGImage = [self newCGImageRotatedByAngle:cgImage angle:180];
-              rotated = true;
-            } else {
-              rotatedCGImage = cgImage;
+            if (!imageDataSampleBuffer) {
+                return reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(error.description));
             }
 
-            if(rotated) {
-              [imageMetadata setObject:[NSNumber numberWithInteger:1] forKey:(NSString *)kCGImagePropertyOrientation];
-              CGImageRelease(cgImage);
-            }
-          } else {
-            rotatedCGImage = cgImage;
-          }
+            NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
+            UIImage *capturedImage = [[UIImage alloc] initWithData:imageData];
 
-          // Crop it (if capture quality is set to preview)
-          if (self.cropToViewport) {
+            // By default the resulting image is cropped to match the viewport
+            // aspect ratio. For the most accurate preview make sure that
+            // `AVLayerVideoGravityResizeAspectFill` is used at all times.
             CGSize viewportSize = CGSizeMake(self.previewLayer.frame.size.width, self.previewLayer.frame.size.height);
-            CGRect captureRect = CGRectMake(0, 0, CGImageGetWidth(rotatedCGImage), CGImageGetHeight(rotatedCGImage));
+            CGRect captureRect = CGRectMake(0, 0, capturedImage.size.width, capturedImage.size.height);
             CGRect croppedSize = AVMakeRectWithAspectRatioInsideRect(viewportSize, captureRect);
 
-            rotatedCGImage = CGImageCreateWithImageInRect(rotatedCGImage, croppedSize);
-          }
+            CGRect drawRect;
 
-          // Erase metadata orientation
-          [imageMetadata removeObjectForKey:(NSString *)kCGImagePropertyOrientation];
-          // Erase stupid TIFF stuff
-          [imageMetadata removeObjectForKey:(NSString *)kCGImagePropertyTIFFDictionary];
+            // Based on whether the image is a portrait or landscape, the offset
+            // for drawing is calculated and a new rect is created.
+            if (capturedImage.size.height > capturedImage.size.width) {
+                int frameOffsetHeight = (capturedImage.size.height / capturedImage.size.width) * croppedSize.size.width;
+                int frameOffsetY = (frameOffsetHeight - croppedSize.size.height) / 2;
+                drawRect = CGRectMake(0, -frameOffsetY, croppedSize.size.width, frameOffsetHeight);
+            } else {
+                int frameOffsetWidth = (capturedImage.size.width / capturedImage.size.height) * croppedSize.size.height;
+                int frameOffsetX = (frameOffsetWidth - croppedSize.size.width) / 2;
+                drawRect = CGRectMake(-frameOffsetX, 0, frameOffsetWidth, croppedSize.size.height);
+            }
 
-          // Add input metadata
-          [imageMetadata mergeMetadata:[options objectForKey:@"metadata"]];
+            UIGraphicsBeginImageContext(croppedSize.size);
 
-          // Create destination thing
-          NSMutableData *rotatedImageData = [NSMutableData data];
-          CGImageDestinationRef destination = CGImageDestinationCreateWithData((CFMutableDataRef)rotatedImageData, CGImageSourceGetType(source), 1, NULL);
-          CFRelease(source);
-          // add the image to the destination, reattaching metadata
-          CGImageDestinationAddImage(destination, rotatedCGImage, (CFDictionaryRef) imageMetadata);
-          // And write
-          CGImageDestinationFinalize(destination);
-          CFRelease(destination);
+            [capturedImage drawInRect:drawRect];
 
-          [self saveImage:rotatedImageData target:target metadata:imageMetadata resolve:resolve reject:reject];
+            // If an overlay image is present, composite the image over the top
+            // of the original photo maintaining the viewport aspect ratio.
+            if (self.overlayImage) {
+                [self.overlayImage drawInRect:CGRectMake(0, 0, croppedSize.size.width, croppedSize.size.height)];
+            }
 
-          CGImageRelease(rotatedCGImage);
-        }
-        else {
-          reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(error.description));
-        }
-      }];
+            capturedImage = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
+
+            imageData = UIImageJPEGRepresentation(capturedImage, 1.0);
+            [self saveImage:imageData target:target metadata:nil resolve:resolve reject:reject];
+        }];
 #endif
-  });
+    });
 }
 
 
