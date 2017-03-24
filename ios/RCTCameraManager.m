@@ -311,6 +311,8 @@ RCT_CUSTOM_VIEW_PROPERTY(overlayImage, UIImage, RCTCamera) {
     self.overlayImage = [RCTConvert UIImage:json];
     if (self.overlayImage) {
         self.brandingLayer.contents = (id)self.overlayImage.CGImage;
+    } else {
+        self.brandingLayer.contents = (id)[UIImage new].CGImage;
     }
 }
 
