@@ -599,6 +599,13 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
                                                                forKeys:
                                     @[NSFontAttributeName, NSForegroundColorAttributeName]];
         [text drawAtPoint:CGPointMake(size.width/3, size.height/2) withAttributes:attributes];
+
+        // If an overlay image is present, composite the image over the top
+        // of the original photo maintaining the viewport aspect ratio.
+        if (self.overlayImage) {
+            [self.overlayImage drawInRect:CGRectMake(0, 0, size.width, size.height)];
+        }
+
         UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
 
