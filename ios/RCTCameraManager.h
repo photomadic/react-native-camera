@@ -22,7 +22,8 @@ typedef NS_ENUM(NSInteger, RCTCameraCaptureSessionPreset) {
 
 typedef NS_ENUM(NSInteger, RCTCameraCaptureMode) {
   RCTCameraCaptureModeStill = 0,
-  RCTCameraCaptureModeVideo = 1
+  RCTCameraCaptureModeVideo = 1,
+  RCTCameraCaptureModeAnimation = 2,
 };
 
 typedef NS_ENUM(NSInteger, RCTCameraCaptureTarget) {
@@ -79,6 +80,11 @@ typedef NS_ENUM(NSInteger, RCTCameraTorchMode) {
 @property (nonatomic, strong) RCTCamera *camera;
 @property (nonatomic, assign) BOOL cropToViewport;
 @property (nonatomic, strong) UIImage *overlayImage;
+
+@property (nonatomic, assign) BOOL processVideoToAnimation;
+@property (nonatomic, assign) CGSize animationOutputSize;
+@property (nonatomic, assign) int32_t animationInputFps;
+@property (nonatomic, assign) int32_t animationOutputFps;
 
 
 - (void)changeOrientation:(NSInteger)orientation;
