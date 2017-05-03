@@ -1019,7 +1019,7 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 - (void)animationFrames:(NSMutableArray *)animatedFrames toVideo:(NSMutableDictionary *)videoInfo
 {
     NSString *outputName = [[NSProcessInfo processInfo] globallyUniqueString];
-    NSURL *fullPath = [NSURL fileURLWithPath: [NSString stringWithFormat:@"%@%@.mov", NSTemporaryDirectory(), outputName]];
+    NSURL *fullPath = [NSURL fileURLWithPath: [NSString stringWithFormat:@"%@%@.mp4", NSTemporaryDirectory(), outputName]];
 
     NSError *writeError;
     AVAssetWriter *videoWriter = [AVAssetWriter assetWriterWithURL:fullPath fileType:AVFileTypeMPEG4 error:&writeError];
@@ -1089,9 +1089,10 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 
     [animatedFrameInput markAsFinished];
     [videoWriter finishWritingWithCompletionHandler:^{
-        [videoInfo setObject:fullPath.absoluteString forKey:@"path"];
+        [videoInfo setObject:fullPath.path forKey:@"path"];
         [videoInfo setObject:[NSNumber numberWithFloat:self.animationOutputSize.width] forKey: @"width"];
         [videoInfo setObject:[NSNumber numberWithFloat:self.animationOutputSize.height] forKey: @"height"];
+
         self.videoResolve(videoInfo);
     }];
 }
