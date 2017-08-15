@@ -563,6 +563,13 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
   });
 }
 
+- (void)drawMirrored:(CGContextRef)context width:(double)width
+{
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(width, 0.0);
+    transform = CGAffineTransformScale(transform, -1.0, 1.0);
+    CGContextConcatCTM(context, transform);
+}
+
 - (void)captureStill:(NSInteger)target options:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
     AVCaptureVideoOrientation orientation = options[@"orientation"] != nil ? [options[@"orientation"] integerValue] : self.orientation;
@@ -591,6 +598,10 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
             size = (orientation == AVCaptureVideoOrientationPortrait || orientation == AVCaptureVideoOrientationPortraitUpsideDown) ? CGSizeMake(720, 1280) : CGSizeMake(1280, 720);
         }
         UIGraphicsBeginImageContextWithOptions(size, YES, 0);
+        CGContextRef currentContext = UIGraphicsGetCurrentContext();
+        if (self.mirrorImage) {
+            [self drawMirrored:currentContext width:size.width];
+        }
 
         // Thanks https://gist.github.com/kylefox/1689973
         CGFloat hue = ( arc4random() % 256 / 256.0 );  //  0.0 to 1.0
@@ -609,6 +620,10 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
                                                                forKeys:
                                     @[NSFontAttributeName, NSForegroundColorAttributeName]];
         [text drawAtPoint:CGPointMake(size.width/3, size.height/2) withAttributes:attributes];
+
+        if (self.mirrorImage) {
+            [self drawMirrored:currentContext width:size.width];
+        }
 
         // If an overlay image is present, composite the image over the top
         // of the original photo maintaining the viewport aspect ratio.
@@ -655,8 +670,17 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
             }
 
             UIGraphicsBeginImageContext(croppedSize.size);
+            CGContextRef currentContext = UIGraphicsGetCurrentContext();
+
+            if (self.mirrorImage) {
+                [self drawMirrored:currentContext width:croppedSize.size.width];
+            }
 
             [capturedImage drawInRect:drawRect];
+
+            if (self.mirrorImage) {
+                [self drawMirrored:currentContext width:croppedSize.size.width];
+            }
 
             // If an overlay image is present, composite the image over the top
             // of the original photo maintaining the viewport aspect ratio.
@@ -719,41 +743,6 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
             reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(@"invalid target"));
             break;
     }
-}
-
-- (CGImageRef)newCGImageRotatedByAngle:(CGImageRef)imgRef angle:(CGFloat)angle
-{
-  CGFloat angleInRadians = angle * (M_PI / 180);
-  CGFloat width = CGImageGetWidth(imgRef);
-  CGFloat height = CGImageGetHeight(imgRef);
-
-  CGRect imgRect = CGRectMake(0, 0, width, height);
-  CGAffineTransform transform = CGAffineTransformMakeRotation(angleInRadians);
-  CGRect rotatedRect = CGRectApplyAffineTransform(imgRect, transform);
-
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGContextRef bmContext = CGBitmapContextCreate(NULL, rotatedRect.size.width, rotatedRect.size.height, 8, 0, colorSpace, (CGBitmapInfo) kCGImageAlphaPremultipliedFirst);
-
-  if (self.mirrorImage) {
-    CGAffineTransform transform = CGAffineTransformMakeTranslation(rotatedRect.size.width, 0.0);
-    transform = CGAffineTransformScale(transform, -1.0, 1.0);
-    CGContextConcatCTM(bmContext, transform);
-  }
-
-  CGContextSetAllowsAntialiasing(bmContext, TRUE);
-  CGContextSetInterpolationQuality(bmContext, kCGInterpolationNone);
-
-  CGColorSpaceRelease(colorSpace);
-
-  CGContextTranslateCTM(bmContext, +(rotatedRect.size.width/2), +(rotatedRect.size.height/2));
-  CGContextRotateCTM(bmContext, angleInRadians);
-  CGContextTranslateCTM(bmContext, -(rotatedRect.size.width/2), -(rotatedRect.size.height/2));
-
-  CGContextDrawImage(bmContext, CGRectMake((rotatedRect.size.width-width)/2.0f, (rotatedRect.size.height-height)/2.0f, width, height), imgRef);
-
-  CGImageRef rotatedImage = CGBitmapContextCreateImage(bmContext);
-  CFRelease(bmContext);
-  return rotatedImage;
 }
 
 -(void)captureAnimation:(NSInteger)target options:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
@@ -1068,7 +1057,16 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
             CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
             CGContextRef context = CGBitmapContextCreate(CVPixelBufferGetBaseAddress(managedPixelBuffer), self.animationOutputSize.width, self.animationOutputSize.height, 8, CVPixelBufferGetBytesPerRow(managedPixelBuffer), rgbColorSpace, 2);
             CGContextClearRect(context, CGRectMake(0, 0, self.animationOutputSize.width, _animationOutputSize.height));
+
+            if (self.mirrorImage) {
+                [self drawMirrored:context width:_animationOutputSize.width];
+            }
+
             CGContextDrawImage(context, CGRectMake(0, 0 - videoOffsetY, _animationOutputSize.width, videoOffsetHeight), nextPhoto);
+
+            if (self.mirrorImage) {
+                [self drawMirrored:context width:_animationOutputSize.width];
+            }
 
             if (self.overlayImage.CGImage != nil) {
                 CGContextDrawImage(context, CGRectMake(0, 0, self.animationOutputSize.width, self.animationOutputSize.height), self.overlayImage.CGImage);
