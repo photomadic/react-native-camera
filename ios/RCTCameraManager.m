@@ -33,8 +33,10 @@ RCT_EXPORT_MODULE();
   self.session = [AVCaptureSession new];
   #if !(TARGET_IPHONE_SIMULATOR)
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
+    self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.previewLayer.needsDisplayOnBoundsChange = YES;
   #endif
+  self.brandingLayer = [CALayer layer];
 
   if(!self.camera){
     self.camera = [[RCTCamera alloc] initWithManager:self bridge:self.bridge];
@@ -802,9 +804,15 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
   }
 
   dispatch_async(self.sessionQueue, ^{
-    [[self.movieFileOutput connectionWithMediaType:AVMediaTypeVideo] setVideoOrientation:orientation];
+    // Make sure the capture quality is appropriate for Video
+    if (self.session.sessionPreset == AVCaptureSessionPresetPhoto) {
+      [self setCaptureQuality:@"AVCaptureSessionPresetHigh"];
+    }
 
-    //Create temporary URL to record to
+    AVCaptureConnection *connection = [self.movieFileOutput connectionWithMediaType:AVMediaTypeVideo];
+    [connection setVideoOrientation:orientation];
+
+    // Create temporary URL to record to
     NSString *outputPath = [[NSString alloc] initWithFormat:@"%@%@", NSTemporaryDirectory(), @"output.mov"];
     NSURL *outputURL = [[NSURL alloc] initFileURLWithPath:outputPath];
     NSFileManager *fileManager = [NSFileManager defaultManager];
@@ -816,7 +824,12 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
         }
     }
 
-    //Start recording
+    if (!connection.active) {
+      reject(RCTErrorUnspecified, nil, RCTErrorWithMessage(@"No valid capture connection, check that your sessionPreset is compatible with AVMediaTypeVideo"));
+      return;
+    }
+
+    // Start recording
     [self.movieFileOutput startRecordingToOutputFileURL:outputURL recordingDelegate:self];
 
     self.videoResolve = resolve;
