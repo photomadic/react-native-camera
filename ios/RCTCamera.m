@@ -100,14 +100,16 @@
 
 - (void)insertReactSubview:(UIView *)view atIndex:(NSInteger)atIndex
 {
-  [self insertSubview:view atIndex:atIndex + 2];
-  return;
+    [self insertSubview:view atIndex:atIndex];
+    [super insertReactSubview:view atIndex:atIndex];
+    return;
 }
 
 - (void)removeReactSubview:(UIView *)subview
 {
-  [subview removeFromSuperview];
-  return;
+    [subview removeFromSuperview];
+    [super removeReactSubview:subview];
+    return;
 }
 
 - (void)removeFromSuperview
