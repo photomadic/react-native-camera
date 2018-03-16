@@ -804,11 +804,6 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
   }
 
   dispatch_async(self.sessionQueue, ^{
-    // Make sure the capture quality is appropriate for Video
-    if (self.session.sessionPreset == AVCaptureSessionPresetPhoto) {
-      [self setCaptureQuality:@"AVCaptureSessionPresetHigh"];
-    }
-
     AVCaptureConnection *connection = [self.movieFileOutput connectionWithMediaType:AVMediaTypeVideo];
     [connection setVideoOrientation:orientation];
 
