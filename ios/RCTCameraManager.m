@@ -14,6 +14,7 @@
 @interface RCTCameraManager ()
 
 @property (strong, nonatomic) RCTSensorOrientationChecker * sensorOrientationChecker;
+@property (assign, nonatomic) NSString* captureQuality;
 @property (assign, nonatomic) NSInteger* flashMode;
 
 @end
@@ -172,7 +173,17 @@ RCT_CUSTOM_VIEW_PROPERTY(captureQuality, NSInteger, RCTCamera) {
       break;
   }
 
-  [self setCaptureQuality:qualityString];
+#if !(TARGET_IPHONE_SIMULATOR)
+    if (self.session.isRunning) {
+        dispatch_async(self.sessionQueue, ^{
+            [self.session beginConfiguration];
+            if ([self.session canSetSessionPreset:self.captureQuality]) {
+                self.session.sessionPreset = self.captureQuality;
+            }
+            [self.session commitConfiguration];
+        });
+    }
+#endif
 }
 
 RCT_CUSTOM_VIEW_PROPERTY(aspect, NSInteger, RCTCamera) {
@@ -561,6 +572,10 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
       [self.metadataOutput setMetadataObjectTypes:self.metadataOutput.availableMetadataObjectTypes];
     }
 
+      if ([self.session canSetSessionPreset:self.captureQuality]) {
+          self.session.sessionPreset = self.captureQuality;
+      }
+
     [self.session commitConfiguration];
   });
 }
@@ -804,11 +819,6 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
   }
 
   dispatch_async(self.sessionQueue, ^{
-    // Make sure the capture quality is appropriate for Video
-    if (self.session.sessionPreset == AVCaptureSessionPresetPhoto) {
-      [self setCaptureQuality:@"AVCaptureSessionPresetHigh"];
-    }
-
     AVCaptureConnection *connection = [self.movieFileOutput connectionWithMediaType:AVMediaTypeVideo];
     [connection setVideoOrientation:orientation];
 
@@ -1244,19 +1254,6 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
     } else {
         NSLog(@"error: %@", error);
     }
-}
-
-- (void)setCaptureQuality:(NSString *)quality
-{
-    #if !(TARGET_IPHONE_SIMULATOR)
-        if (quality) {
-            [self.session beginConfiguration];
-            if ([self.session canSetSessionPreset:quality]) {
-                self.session.sessionPreset = quality;
-            }
-            [self.session commitConfiguration];
-        }
-    #endif
 }
 
 @end
