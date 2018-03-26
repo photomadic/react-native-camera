@@ -241,9 +241,10 @@ RCT_REMAP_METHOD(record,
         RNCamera *view = viewRegistry[reactTag];
         if (![view isKindOfClass:[RNCamera class]]) {
             RCTLogError(@"Invalid view returned from registry, expecting RNCamera, got: %@", view);
-        } else {
-            [view record:options resolve:resolve reject:reject];
+            return;
         }
+
+        [view record:options resolve:resolve reject:reject];
     }];
 }
 
