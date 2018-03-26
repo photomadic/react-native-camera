@@ -13,6 +13,8 @@ import {
   Text,
 } from 'react-native';
 
+import ImageSourcePropType from 'react-native/Libraries/Image/ImageSourcePropType'
+
 import type { FaceFeature } from './FaceDetector';
 
 import { requestPermissions } from './handlePermissions';
@@ -154,6 +156,7 @@ export default class Camera extends React.Component<PropsType> {
     pendingAuthorizationView: PropTypes.element,
     captureAudio: PropTypes.bool,
     useCamera2Api: PropTypes.bool,
+    overlayImage: ImageSourcePropType,
   };
 
   static defaultProps: Object = {

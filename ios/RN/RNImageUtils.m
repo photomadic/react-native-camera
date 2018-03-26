@@ -61,6 +61,18 @@
     return flippedImage;
 }
 
++ (UIImage *)overlayImage:(UIImage *)image withImage:(UIImage *)overlay
+{
+    CGSize size = CGSizeMake(image.size.width, image.size.height);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);
+    [image drawInRect:CGRectMake(0, 0, size.width, size.height)];
+    [overlay drawInRect:CGRectMake(0, 0, size.width, size.height)];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [UIImage imageWithCGImage:[newImage CGImage] scale:1.0 orientation:(newImage.imageOrientation)];
+
+}
+
 + (NSString *)writeImage:(NSData *)image toPath:(NSString *)path
 {
     [image writeToFile:path atomically:YES];
