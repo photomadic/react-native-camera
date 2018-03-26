@@ -21,6 +21,8 @@
 @property(nonatomic, strong) AVCaptureMetadataOutput *metadataOutput;
 @property(nonatomic, strong) id runtimeErrorHandlingObserver;
 @property(nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
+@property(nonatomic, strong) CALayer *overlayLayer;
+@property(nonatomic, strong) UIImage *overlayImage;
 @property(nonatomic, strong) NSArray *barCodeTypes;
 
 @property(nonatomic, assign) NSInteger presetCamera;

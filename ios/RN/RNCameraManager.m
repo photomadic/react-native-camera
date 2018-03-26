@@ -125,6 +125,15 @@ RCT_CUSTOM_VIEW_PROPERTY(type, NSInteger, RNCamera)
     }
 }
 
+RCT_CUSTOM_VIEW_PROPERTY(overlayImage, UIImage, RNCamera) {
+    view.overlayImage = [RCTConvert UIImage:json];
+    if (view.overlayImage) {
+        view.overlayLayer.contents = (id)view.overlayImage.CGImage;
+        return;
+    }
+    view.overlayLayer.contents = (id)[UIImage new].CGImage;
+}
+
 RCT_CUSTOM_VIEW_PROPERTY(flashMode, NSInteger, RNCamera)
 {
     [view setFlashMode:[RCTConvert NSInteger:json]];
