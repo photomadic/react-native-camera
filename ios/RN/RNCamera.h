@@ -28,11 +28,16 @@
 @property(nonatomic, assign) NSInteger presetCamera;
 @property(nonatomic, assign) NSInteger flashMode;
 @property(nonatomic, assign) CGFloat zoom;
+@property(nonatomic, assign) BOOL mirrorImage;
 @property(nonatomic, assign) NSInteger autoFocus;
 @property(nonatomic, assign) float focusDepth;
 @property(nonatomic, assign) NSInteger whiteBalance;
 @property(nonatomic, assign, getter=isReadingBarCodes) BOOL barCodeReading;
 @property(nonatomic, assign) AVVideoCodecType videoCodecType;
+
+@property(nonatomic, assign) CGSize animationOutputSize;
+@property(nonatomic, assign) int64_t animationInputFps;
+@property(nonatomic, assign) int64_t animationOutputFps;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
@@ -53,5 +58,7 @@
 - (void)onMountingError:(NSDictionary *)event;
 - (void)onCodeRead:(NSDictionary *)event;
 - (void)onFacesDetected:(NSDictionary *)event;
+
+- (void)processVideoToAnimation:(NSURL *)outputFileURL;
 
 @end
