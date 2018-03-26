@@ -41,6 +41,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
         self.previewLayer.needsDisplayOnBoundsChange = YES;
 #endif
+        self.overlayLayer = [CALayer layer];
         self.paused = NO;
         [self changePreviewOrientation:[UIApplication sharedApplication].statusBarOrientation];
         [self initializeCaptureSessionInput];
@@ -85,6 +86,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     [super layoutSubviews];
     self.previewLayer.frame = self.bounds;
     [self.layer insertSublayer:self.previewLayer atIndex:0];
+
+    self.overlayLayer.frame = self.bounds;
+    [self.layer insertSublayer:self.overlayLayer atIndex:1];
 }
 
 - (void)insertReactSubview:(UIView *)view atIndex:(NSInteger)atIndex
@@ -326,6 +330,12 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
             if ([options[@"width"] integerValue]) {
                 takenImage = [RNImageUtils scaleImage:takenImage toWidth:[options[@"width"] integerValue]];
+            }
+
+            // If an overlay image is present, composite the image over the top
+            // of the original photo maintaining the viewport aspect ratio.
+            if (self.overlayImage) {
+                takenImage = [RNImageUtils overlayImage:takenImage withImage:self.overlayImage];
             }
 
             NSMutableDictionary *response = [[NSMutableDictionary alloc] init];
