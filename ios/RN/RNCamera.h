@@ -24,13 +24,13 @@
 @property(nonatomic, strong) NSArray *barCodeTypes;
 
 @property(nonatomic, assign) NSInteger presetCamera;
-@property (assign, nonatomic) NSInteger flashMode;
-@property (assign, nonatomic) CGFloat zoom;
-@property (assign, nonatomic) NSInteger autoFocus;
-@property (assign, nonatomic) float focusDepth;
-@property (assign, nonatomic) NSInteger whiteBalance;
-@property (nonatomic, assign, getter=isReadingBarCodes) BOOL barCodeReading;
-@property(assign, nonatomic) AVVideoCodecType videoCodecType;
+@property(nonatomic, assign) NSInteger flashMode;
+@property(nonatomic, assign) CGFloat zoom;
+@property(nonatomic, assign) NSInteger autoFocus;
+@property(nonatomic, assign) float focusDepth;
+@property(nonatomic, assign) NSInteger whiteBalance;
+@property(nonatomic, assign, getter=isReadingBarCodes) BOOL barCodeReading;
+@property(nonatomic, assign) AVVideoCodecType videoCodecType;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
@@ -53,4 +53,3 @@
 - (void)onFacesDetected:(NSDictionary *)event;
 
 @end
-
