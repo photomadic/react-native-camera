@@ -847,7 +847,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     frameGenerator.apertureMode = AVAssetImageGeneratorApertureModeCleanAperture;
     frameGenerator.requestedTimeToleranceBefore = kCMTimeZero;
     frameGenerator.requestedTimeToleranceAfter = kCMTimeZero;
-
     [frameGenerator generateCGImagesAsynchronouslyForTimes:framesToKeep completionHandler:^(CMTime requestedTime, CGImageRef  _Nullable image, CMTime actualTime, AVAssetImageGeneratorResult result, NSError * _Nullable error) {
         if (error != nil || image == nil) {
             if (frameGenerator != nil) {
