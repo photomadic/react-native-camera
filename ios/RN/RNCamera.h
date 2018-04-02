@@ -44,7 +44,7 @@
 @property(nonatomic, strong) AVAssetWriterInput* writerInput;
 @property(nonatomic, strong) AVCaptureVideoDataOutput* videoOutput;
 @property(nonatomic, strong) NSTimer* timer;
-@property(nonatomic, assign) BOOL canCaptureVideo;
+@property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime recordStartTimestamp;
 
 - (id)initWithBridge:(RCTBridge *)bridge;

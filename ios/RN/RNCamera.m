@@ -448,7 +448,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         if (self.videoWriter.status != AVAssetWriterStatusWriting) {
             [self.videoWriter startWriting];
             [self.videoWriter startSessionAtSourceTime:self.recordStartTimestamp];
-            self.canCaptureVideo = YES;
+            self.canAppendBuffer = YES;
             dispatch_async(dispatch_get_main_queue(), ^{
                 self.timer = [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(stopVideoStream) userInfo:nil repeats:NO];
             });
@@ -460,7 +460,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 }
 
 - (void)stopVideoStream {
-    self.canCaptureVideo = NO;
+    self.canAppendBuffer = NO;
     [self.writerInput markAsFinished];
     [self.videoWriter finishWritingWithCompletionHandler:^{
         [self processVideoToAnimation:self.videoWriter.outputURL];
@@ -472,7 +472,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 //    CMTime time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
 //    NSLog(@"=-=-=-seconds = %f", CMTimeGetSeconds(time));
     self.recordStartTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-    if (self.canCaptureVideo) {
+    if (self.canAppendBuffer) {
         [self.writerInput appendSampleBuffer:sampleBuffer];
     }
 }
@@ -492,7 +492,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        [self onMountingError:@{@"message": @"Camera permissions not granted - component could not be rendered."}];
     //        return;
     //    }
-    self.canCaptureVideo = NO;
+    self.canAppendBuffer = NO;
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
             return;
