@@ -39,13 +39,12 @@
 @property(nonatomic, assign) int64_t animationInputFps;
 @property(nonatomic, assign) int64_t animationOutputFps;
 
-// WIP
 @property(nonatomic, strong) AVAssetWriter *videoWriter;
 @property(nonatomic, strong) AVAssetWriterInput* writerInput;
 @property(nonatomic, strong) AVCaptureVideoDataOutput* videoOutput;
 @property(nonatomic, strong) NSTimer* timer;
 @property(nonatomic, assign) BOOL canAppendBuffer;
-@property(nonatomic, assign) CMTime recordStartTimestamp;
+@property(nonatomic, assign) CMTime bufferTimestamp;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
@@ -68,8 +67,6 @@
 - (void)onFacesDetected:(NSDictionary *)event;
 
 - (void)processVideoToAnimation:(NSURL *)outputFileURL;
-
-// WIP
-- (void) stopVideoStream;
+- (void)stopAssetWriter;
 
 @end

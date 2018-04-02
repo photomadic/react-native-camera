@@ -394,18 +394,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         [self setupMovieFileCapture];
     }
 
-//    if (self.movieFileOutput == nil || self.movieFileOutput.isRecording || _videoRecordedResolve != nil || _videoRecordedReject != nil) {
-//      return;
-//    }
-//
-//    if (options[@"maxDuration"]) {
-//        Float64 maxDuration = [options[@"maxDuration"] floatValue];
-//        self.movieFileOutput.maxRecordedDuration = CMTimeMakeWithSeconds(maxDuration, 30);
-//    }
-//
-//    if (options[@"maxFileSize"]) {
-//        self.movieFileOutput.maxRecordedFileSize = [options[@"maxFileSize"] integerValue];
-//    }
+    if (_videoRecordedResolve != nil || _videoRecordedReject != nil) {
+      return;
+    }
 
     if (options[@"quality"]) {
         [self updateSessionPreset:[RNCameraUtils captureSessionPresetForVideoResolution:(RNCameraVideoResolution)[options[@"quality"] integerValue]]];
@@ -423,34 +414,20 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     [self updateSessionAudioIsMuted:!!options[@"mute"]];
 
-//    AVCaptureConnection *connection = [self.movieFileOutput connectionWithMediaType:AVMediaTypeVideo];
-//    [connection setVideoOrientation:[RNCameraUtils videoOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]]];
-
-    if (options[@"codec"]) {
-      AVVideoCodecType videoCodecType = options[@"codec"];
-      if (@available(iOS 10, *)) {
-        if ([self.movieFileOutput.availableVideoCodecTypes containsObject:videoCodecType]) {
-//          [self.movieFileOutput setOutputSettings:@{AAVCaptureMovieFileOutputVVideoCodecKey:videoCodecType} forConnection:connection];
-          self.videoCodecType = videoCodecType;
-        } else {
-          RCTLogWarn(@"%s: Video Codec '%@' is not supported on this device.", __func__, videoCodecType);
-        }
-      } else {
-        RCTLogWarn(@"%s: Setting videoCodec is only supported above iOS version 10.", __func__);
-      }
-    }
-
     dispatch_async(self.sessionQueue, ^{
         [self updateFlashMode];
-//        NSString *path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingString:@"Camera"] withExtension:@".mov"];
-//        NSURL *outputURL = [[NSURL alloc] initFileURLWithPath:path];
-//        [self.movieFileOutput startRecordingToOutputFileURL:outputURL recordingDelegate:self];
+
         if (self.videoWriter.status != AVAssetWriterStatusWriting) {
             [self.videoWriter startWriting];
-            [self.videoWriter startSessionAtSourceTime:self.recordStartTimestamp];
+            [self.videoWriter startSessionAtSourceTime:self.bufferTimestamp];
             self.canAppendBuffer = YES;
             dispatch_async(dispatch_get_main_queue(), ^{
-                self.timer = [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(stopVideoStream) userInfo:nil repeats:NO];
+                if (options[@"maxDuration"]) {
+                    Float64 maxDuration = [options[@"maxDuration"] floatValue];
+                    self.timer = [NSTimer scheduledTimerWithTimeInterval:maxDuration target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
+                    return;
+                }
+                self.timer = [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
             });
 
         }
@@ -459,7 +436,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     });
 }
 
-- (void)stopVideoStream {
+- (void)stopAssetWriter {
     self.canAppendBuffer = NO;
     [self.writerInput markAsFinished];
     [self.videoWriter finishWritingWithCompletionHandler:^{
@@ -469,9 +446,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
-//    CMTime time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-//    NSLog(@"=-=-=-seconds = %f", CMTimeGetSeconds(time));
-    self.recordStartTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    self.bufferTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
     if (self.canAppendBuffer) {
         [self.writerInput appendSampleBuffer:sampleBuffer];
     }
@@ -768,12 +743,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     NSError *error = nil;
     self.videoWriter = [[AVAssetWriter alloc] initWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
 
-//    NSDictionary *videoSettings = @{AVVideoCodecKey: AVVideoCodecH264,
-//                                    AVVideoWidthKey: [NSNumber numberWithInt:self.previewLayer.frame.size.width],
-//                                    AVVideoHeightKey: [NSNumber numberWithInt:self.previewLayer.frame.size.height],
-//                                    };
-//    self.writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
-
     self.writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:nil];
 
     [self.videoWriter addInput:self.writerInput];
@@ -789,12 +758,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         [connection setVideoOrientation:[RNCameraUtils videoOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]]];
     });
 
-//    AVCaptureMovieFileOutput *movieFileOutput = [[AVCaptureMovieFileOutput alloc] init];
-//
-//    if ([self.session canAddOutput:movieFileOutput]) {
-//        [self.session addOutput:movieFileOutput];
-//        self.movieFileOutput = movieFileOutput;
-//    }
 }
 
 - (void)cleanupMovieFileCapture
