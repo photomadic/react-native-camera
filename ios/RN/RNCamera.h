@@ -11,7 +11,7 @@
 
 @class RNCamera;
 
-@interface RNCamera : UIView <AVCaptureMetadataOutputObjectsDelegate, AVCaptureFileOutputRecordingDelegate, RNFaceDetectorDelegate>
+@interface RNCamera : UIView <AVCaptureMetadataOutputObjectsDelegate, AVCaptureFileOutputRecordingDelegate, RNFaceDetectorDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property(nonatomic, strong) dispatch_queue_t sessionQueue;
 @property(nonatomic, strong) AVCaptureSession *session;
@@ -39,6 +39,14 @@
 @property(nonatomic, assign) int64_t animationInputFps;
 @property(nonatomic, assign) int64_t animationOutputFps;
 
+// WIP
+@property(nonatomic, strong) AVAssetWriter *videoWriter;
+@property(nonatomic, strong) AVAssetWriterInput* writerInput;
+@property(nonatomic, strong) AVCaptureVideoDataOutput* videoOutput;
+@property(nonatomic, strong) NSTimer* timer;
+@property(nonatomic, assign) BOOL canCaptureVideo;
+@property(nonatomic, assign) CMTime recordStartTimestamp;
+
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
 - (void)updateFlashMode;
@@ -60,5 +68,8 @@
 - (void)onFacesDetected:(NSDictionary *)event;
 
 - (void)processVideoToAnimation:(NSURL *)outputFileURL;
+
+// WIP
+- (void) stopVideoStream;
 
 @end
