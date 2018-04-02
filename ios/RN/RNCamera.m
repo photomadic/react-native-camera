@@ -734,7 +734,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 # pragma mark - AVCaptureMovieFileOutput
 
-// WIP
 - (void)setupMovieFileCapture
 {
     NSString *path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingString:@"Camera"] withExtension:@".mov"];
@@ -742,9 +741,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     NSError *error = nil;
     self.videoWriter = [[AVAssetWriter alloc] initWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
-
     self.writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:nil];
-
     [self.videoWriter addInput:self.writerInput];
 
     self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
@@ -757,7 +754,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     dispatch_async(dispatch_get_main_queue(), ^{
         [connection setVideoOrientation:[RNCameraUtils videoOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]]];
     });
-
 }
 
 - (void)cleanupMovieFileCapture
@@ -853,10 +849,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     frameGenerator.requestedTimeToleranceAfter = kCMTimeZero;
 
     [frameGenerator generateCGImagesAsynchronouslyForTimes:framesToKeep completionHandler:^(CMTime requestedTime, CGImageRef  _Nullable image, CMTime actualTime, AVAssetImageGeneratorResult result, NSError * _Nullable error) {
-        if (error != nil) {
-            NSLog(@"=-=-=- %@ %@", error, [error userInfo]);
-        }
-
         if (error != nil || image == nil) {
             if (frameGenerator != nil) {
                 [frameGenerator cancelAllCGImageGeneration];
