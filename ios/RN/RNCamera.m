@@ -350,8 +350,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
                 response[@"base64"] = [takenImageData base64EncodedStringWithOptions:0];
             }
 
-
-
             if ([options[@"exif"] boolValue]) {
                 int imageRotation;
                 switch (takenImage.imageOrientation) {
@@ -412,27 +410,19 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         self.mirrorImage = [options[@"mirrorImage"] boolValue];
     }
 
+    if (options[@"maxDuration"]) {
+        self.maxDuration = [options[@"maxDuration"] floatValue];
+    }
+
     [self updateSessionAudioIsMuted:!!options[@"mute"]];
+
+    // Set flag that notifies 'didOutputSampleBuffer' delegate method to initialize writer with buffer timestamp
+    self.canAppendBuffer = YES;
+    self.videoRecordedResolve = resolve;
+    self.videoRecordedReject = reject;
 
     dispatch_async(self.sessionQueue, ^{
         [self updateFlashMode];
-
-        if (self.videoWriter.status != AVAssetWriterStatusWriting) {
-            [self.videoWriter startWriting];
-            [self.videoWriter startSessionAtSourceTime:self.bufferTimestamp];
-            self.canAppendBuffer = YES;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (options[@"maxDuration"]) {
-                    Float64 maxDuration = [options[@"maxDuration"] floatValue];
-                    self.timer = [NSTimer scheduledTimerWithTimeInterval:maxDuration target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
-                    return;
-                }
-                self.timer = [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
-            });
-
-        }
-        self.videoRecordedResolve = resolve;
-        self.videoRecordedReject = reject;
     });
 }
 
@@ -446,8 +436,14 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
-    self.bufferTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
     if (self.canAppendBuffer) {
+        if (self.videoWriter.status != AVAssetWriterStatusWriting) {
+            [self.videoWriter startWriting];
+            [self.videoWriter startSessionAtSourceTime:CMSampleBufferGetPresentationTimeStamp(sampleBuffer)];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.timer = [NSTimer scheduledTimerWithTimeInterval:self.maxDuration target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
+            });
+        }
         [self.writerInput appendSampleBuffer:sampleBuffer];
     }
 }
@@ -836,8 +832,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     NSMutableArray *framesToKeep = [NSMutableArray arrayWithCapacity:framesNeeded];
     NSMutableArray *animatedFrames = [NSMutableArray arrayWithCapacity:framesNeeded * 2];
 
-    // Start int at 1 to skip first frame timestamped 0.00
-    for (int i = 1; i < framesNeeded; i++) {
+    for (int i = 0; i < framesNeeded; i++) {
         CMTime time = CMTimeMakeWithSeconds(i * step, videoAsAsset.duration.timescale);
         [framesToKeep addObject: [NSValue valueWithCMTime:time]];
     }
