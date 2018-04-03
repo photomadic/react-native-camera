@@ -449,11 +449,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
 }
 
-//- (void)stopRecording
-//{
-//    [self.movieFileOutput stopRecording];
-//}
-
 - (void)startSession
 {
 #if TARGET_IPHONE_SIMULATOR
