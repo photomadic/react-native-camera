@@ -462,48 +462,29 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCIImage:orientedImage options:d];
     [handler performRequests:@[faceDetectionReq] error:nil];
 
-    VNFaceObservation *mainFace;
-    CGPoint mainFaceCenter;
-    float mainFaceSize;
+    VNFaceObservation *primaryFace;
+    CGPoint primaryFaceCenter;
+    float primaryFaceSize;
 
     for(VNFaceObservation *observation in faceDetectionReq.results){
         if(observation){
             float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
-            if (!mainFace || size > mainFaceSize) {
-                mainFace = observation;
-                mainFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
-                mainFaceSize = size;
+            if (!primaryFace || size > primaryFaceSize) {
+                primaryFace = observation;
+                primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+                primaryFaceSize = size;
             }
         }
     }
 
     if ([faceDetectionReq.results count] && !self.exposureTimeout) {
-//        [self drawFaceRect:mainFace];
-        [self setExposure:mainFaceCenter];
+        [self setExposure:primaryFaceCenter];
         self.exposureTimeout = YES;
         dispatch_async(dispatch_get_main_queue(), ^{
             self.exposureTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(resetExposureTimeout) userInfo:nil repeats:NO];
         });
     }
 }
-
-//-(void)drawFaceRect:(VNFaceObservation *)observation {
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        [self.faceRect removeFromSuperlayer];
-//
-//        CGRect boundingBox = observation.boundingBox;
-//        CGSize size = CGSizeMake(boundingBox.size.width * self.layer.bounds.size.width, boundingBox.size.height * self.layer.bounds.size.height);
-//        CGPoint origin = CGPointMake(boundingBox.origin.x * self.layer.bounds.size.width, (1-boundingBox.origin.y) * self.layer.bounds.size.height - size.height);
-//
-//        self.faceRect = [CAShapeLayer layer];
-//
-//        self.faceRect.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
-//        self.faceRect.borderColor = [UIColor redColor].CGColor;
-//        self.faceRect.borderWidth = 2;
-//
-//        [self.layer addSublayer:self.faceRect];
-//    });
-//}
 
 - (void)resetExposureTimeout;
 {
@@ -512,14 +493,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)setExposure:(CGPoint) point;
 {
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        [self.exposureSquare removeFromSuperlayer];
-//        self.exposureSquare = [CAShapeLayer layer];
-//        self.exposureSquare.frame = CGRectMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height, 10, 10);
-//        self.exposureSquare.borderColor = [UIColor redColor].CGColor;
-//        self.exposureSquare.borderWidth = 2;
-//        [self.layer addSublayer:self.exposureSquare];
-//    });
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     [device lockForConfiguration:nil];
     CGPoint test = CGPointMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height);
