@@ -495,8 +495,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     [device lockForConfiguration:nil];
-    CGPoint test = CGPointMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height);
-    CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:test];
+    CGPoint scaledPoint = CGPointMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height);
+    CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
     [device setExposurePointOfInterest:devicePoint];
     if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure])
     {
