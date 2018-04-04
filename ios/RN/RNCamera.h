@@ -2,6 +2,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTBridgeModule.h>
 #import <UIKit/UIKit.h>
+#import <Vision/Vision.h>
 
 #if __has_include("RNFaceDetectorManager.h")
 #import "RNFaceDetectorManager.h"
@@ -17,7 +18,6 @@
 @property(nonatomic, strong) AVCaptureSession *session;
 @property(nonatomic, strong) AVCaptureDeviceInput *videoCaptureDeviceInput;
 @property(nonatomic, strong) AVCaptureStillImageOutput *stillImageOutput;
-//@property(nonatomic, strong) AVCaptureMovieFileOutput *movieFileOutput;
 @property(nonatomic, strong) AVCaptureMetadataOutput *metadataOutput;
 @property(nonatomic, strong) id runtimeErrorHandlingObserver;
 @property(nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
@@ -46,6 +46,14 @@
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
+@property(nonatomic, assign) BOOL exposureTimeout;
+
+//@property (nonatomic, strong) VNSequenceRequestHandler *vision;
+//@property (nonatomic, strong) VNDetectedObjectObservation *lastObservation;
+@property (nonatomic, strong) NSTimer *exposureTimer;
+//@property (nonatomic, strong) CAShapeLayer *faceRect;
+//@property (nonatomic, strong) CAShapeLayer *exposureSquare;
+//@property (nonatomic, strong) VNFaceObservation *mainFace;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
