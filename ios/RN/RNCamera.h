@@ -45,8 +45,6 @@
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
-@property(nonatomic, assign) BOOL exposureTimeout;
-@property (nonatomic, strong) NSTimer *exposureTimer;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
