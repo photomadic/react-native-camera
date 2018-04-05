@@ -204,6 +204,31 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     [device unlockForConfiguration];
 }
 
+- (void)updateExposureMode
+{
+    AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
+    NSError *error = nil;
+
+    if (![device lockForConfiguration:&error]) {
+        if (error) {
+            RCTLogError(@"%s: %@", __func__, error);
+        }
+        return;
+    }
+
+    if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+        if ([device lockForConfiguration:&error]) {
+            [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+        } else {
+            if (error) {
+                RCTLogError(@"%s: %@", __func__, error);
+            }
+        }
+    }
+
+    [device unlockForConfiguration];
+}
+
 - (void)updateFocusDepth
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
@@ -477,12 +502,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         }
     }
 
-    if ([faceDetectionReq.results count] && !self.exposureTimeout) {
+    if ([faceDetectionReq.results count]) {
         [self setExposure:primaryFaceCenter];
-        self.exposureTimeout = YES;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.exposureTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(resetExposureTimeout) userInfo:nil repeats:NO];
-        });
     }
 }
 
@@ -493,6 +514,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)setExposure:(CGPoint) point;
 {
+    if (self.exposureTimeout) {
+        return;
+    }
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     [device lockForConfiguration:nil];
     CGPoint scaledPoint = CGPointMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height);
@@ -504,6 +528,11 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
     [device setWhiteBalanceMode:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance];
     [device unlockForConfiguration];
+
+    self.exposureTimeout = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.exposureTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(resetExposureTimeout) userInfo:nil repeats:NO];
+    });
 }
 
 
@@ -622,6 +651,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
             [self updateFocusMode];
             [self updateFocusDepth];
             [self updateWhiteBalance];
+            [self updateExposureMode];
             [self.previewLayer.connection setVideoOrientation:orientation];
             [self _updateMetadataObjectsToRecognize];
         }
