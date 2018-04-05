@@ -6,6 +6,7 @@
 #import <React/RCTLog.h>
 #import <React/RCTUtils.h>
 #import <React/UIView+React.h>
+#import <Vision/Vision.h>
 
 @interface RNCamera ()
 
@@ -193,6 +194,31 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     if ([device isFocusModeSupported:self.autoFocus]) {
         if ([device lockForConfiguration:&error]) {
             [device setFocusMode:self.autoFocus];
+        } else {
+            if (error) {
+                RCTLogError(@"%s: %@", __func__, error);
+            }
+        }
+    }
+
+    [device unlockForConfiguration];
+}
+
+- (void)updateExposureMode
+{
+    AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
+    NSError *error = nil;
+
+    if (![device lockForConfiguration:&error]) {
+        if (error) {
+            RCTLogError(@"%s: %@", __func__, error);
+        }
+        return;
+    }
+
+    if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+        if ([device lockForConfiguration:&error]) {
+            [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
         } else {
             if (error) {
                 RCTLogError(@"%s: %@", __func__, error);
@@ -437,6 +463,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
+    [self findPrimaryFace:sampleBuffer];
+
     if (self.canAppendBuffer) {
         if (self.videoWriter.status != AVAssetWriterStatusWriting) {
             [self.videoWriter startWriting];
@@ -449,6 +477,65 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
 }
 
+-(void)findPrimaryFace:(CMSampleBufferRef)sampleBuffer {
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
+    CIImage *orientedImage = [image imageByApplyingCGOrientation:kCGImagePropertyOrientationUpMirrored];
+
+    VNDetectFaceRectanglesRequest *faceDetectionReq = [VNDetectFaceRectanglesRequest new];
+    NSDictionary *d = [[NSDictionary alloc] init];
+    VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCIImage:orientedImage options:d];
+    [handler performRequests:@[faceDetectionReq] error:nil];
+
+    VNFaceObservation *primaryFace;
+    CGPoint primaryFaceCenter;
+    float primaryFaceSize;
+
+    for(VNFaceObservation *observation in faceDetectionReq.results){
+        if(observation){
+            float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
+            if (!primaryFace || size > primaryFaceSize) {
+                primaryFace = observation;
+                primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+                primaryFaceSize = size;
+            }
+        }
+    }
+
+    if ([faceDetectionReq.results count]) {
+        [self setExposure:primaryFaceCenter];
+    }
+}
+
+- (void)resetExposureTimeout;
+{
+    self.exposureTimeout = NO;
+}
+
+- (void)setExposure:(CGPoint) point;
+{
+    if (self.exposureTimeout) {
+        return;
+    }
+    AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
+    [device lockForConfiguration:nil];
+    CGPoint scaledPoint = CGPointMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height);
+    CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
+    [device setExposurePointOfInterest:devicePoint];
+    if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure])
+    {
+        [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+    }
+    [device setWhiteBalanceMode:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance];
+    [device unlockForConfiguration];
+
+    self.exposureTimeout = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.exposureTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(resetExposureTimeout) userInfo:nil repeats:NO];
+    });
+}
+
+
 - (void)startSession
 {
 #if TARGET_IPHONE_SIMULATOR
@@ -459,7 +546,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        [self onMountingError:@{@"message": @"Camera permissions not granted - component could not be rendered."}];
     //        return;
     //    }
+    self.exposureTimeout = NO;
     self.canAppendBuffer = NO;
+
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
             return;
@@ -562,6 +651,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
             [self updateFocusMode];
             [self updateFocusDepth];
             [self updateWhiteBalance];
+            [self updateExposureMode];
             [self.previewLayer.connection setVideoOrientation:orientation];
             [self _updateMetadataObjectsToRecognize];
         }
