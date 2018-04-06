@@ -520,7 +520,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         RCTLogError(@"%s: %@", __func__, error);
         return;
     }
-
+    if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+        [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+    }
     [device setExposurePointOfInterest:point];
     [device unlockForConfiguration];
 }
