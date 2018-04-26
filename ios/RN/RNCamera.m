@@ -505,7 +505,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
         [self setExposureAtPoint:devicePoint];
-        [self drawPoint:self.primaryFaceCenter];
     });
 }
 
@@ -534,17 +533,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
             self.primaryFaceCenter = center;
         }
     }
-}
-
-- (void)drawPoint:(CGPoint)point {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.exposureSquare removeFromSuperlayer];
-        self.exposureSquare = [CAShapeLayer layer];
-        self.exposureSquare.frame = CGRectMake(point.x * self.layer.bounds.size.width, (1-point.y) * self.layer.bounds.size.height, 10, 10);
-        self.exposureSquare.borderColor = [UIColor redColor].CGColor;
-        self.exposureSquare.borderWidth = 2;
-        [self.layer addSublayer:self.exposureSquare];
-    });
 }
 
 - (void)setExposureAtPoint:(CGPoint)point
