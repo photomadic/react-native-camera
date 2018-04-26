@@ -2,6 +2,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTBridgeModule.h>
 #import <UIKit/UIKit.h>
+#import <Vision/Vision.h>
 
 #if __has_include("RNFaceDetectorManager.h")
 #import "RNFaceDetectorManager.h"
@@ -46,6 +47,9 @@
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
+@property(nonatomic, assign) CGPoint primaryFaceCenter;
+
+
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;

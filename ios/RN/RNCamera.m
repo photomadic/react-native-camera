@@ -235,7 +235,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
 
-    if (self.autoFocus < 0 || device.focusMode != RNCameraAutoFocusOff || device.position == RNCameraTypeFront) {
+    if (self.autoFocus < 0 || device.focusMode != RNCameraAutoFocusOff) {
         return;
     }
 
@@ -490,26 +490,52 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCIImage:orientedImage options:d];
     [handler performRequests:@[faceDetectionReq] error:nil];
 
-    VNFaceObservation *primaryFace;
-    CGPoint primaryFaceCenter = CGPointZero;
-    float primaryFaceSize = 0;
+    if (![faceDetectionReq.results count]) {
+        self.primaryFaceCenter = CGPointZero;
+        return;
+    };
 
-    for (VNFaceObservation *observation in faceDetectionReq.results) {
-        if (!observation) continue;
-        float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
-        if (!primaryFace || size > primaryFaceSize) {
-            primaryFace = observation;
-            primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
-            primaryFaceSize = size;
-        }
+    if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
+        [self establishPrimaryFace:faceDetectionReq];
+    } else {
+        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
     }
 
-    if (![faceDetectionReq.results count] || CGPointEqualToPoint(primaryFaceCenter, CGPointZero)) return;
     dispatch_sync(dispatch_get_main_queue(), ^() {
-        CGPoint scaledPoint = CGPointMake(primaryFaceCenter.x * self.layer.bounds.size.width, (1-primaryFaceCenter.y) * self.layer.bounds.size.height);
+        CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
         [self setExposureAtPoint:devicePoint];
     });
+}
+
+- (void)establishPrimaryFace:(VNDetectFaceRectanglesRequest*)faceDetectionReq  API_AVAILABLE(ios(11.0)){
+    float primaryFaceSize = 0;
+    for (VNFaceObservation *observation in faceDetectionReq.results) {
+        if (!observation) continue;
+        float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
+        if (CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero) || size > primaryFaceSize) {
+            self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+            primaryFaceSize = size;
+        }
+    }
+}
+
+- (void)trackPrimaryFace:(VNDetectFaceRectanglesRequest*)faceDetectionReq :(CGPoint)primaryFace  API_AVAILABLE(ios(11.0)){
+    double smallestDist = INFINITY;
+    for (VNFaceObservation *observation in faceDetectionReq.results) {
+        CGPoint center = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+        double distX = (primaryFace.x - center.x);
+        double distY = (primaryFace.y - center.y);
+        double dist = sqrt(distX * distX + distY * distY);
+        if (dist < smallestDist) {
+            smallestDist = dist;
+            self.primaryFaceCenter = center;
+            printf("=-=-=-tracking face");
+//            NSLog(@"=-=-=-%f", smallestDist);
+        } else {
+            printf("=-=-=ignoring other face");
+        }
+    }
 }
 
 - (void)setExposureAtPoint:(CGPoint)point
