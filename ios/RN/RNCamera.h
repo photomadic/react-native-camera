@@ -46,6 +46,7 @@
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
+@property(nonatomic, assign) CGPoint primaryFaceCenter;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
