@@ -550,15 +550,30 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         }
 
         AVCaptureStillImageOutput *stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
+        [self.session beginConfiguration];
         if ([self.session canAddOutput:stillImageOutput]) {
             stillImageOutput.outputSettings = @{AVVideoCodecKey : AVVideoCodecJPEG};
             [self.session addOutput:stillImageOutput];
             self.stillImageOutput = stillImageOutput;
         }
+        [self.session commitConfiguration];
 
 #if __has_include(<GoogleMobileVision/GoogleMobileVision.h>)
         [_faceDetectorManager maybeStartFaceDetectionOnSession:_session withPreviewLayer:_previewLayer];
 #endif
+        self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
+        self.videoOutput.videoSettings = @{ (id)kCVPixelBufferPixelFormatTypeKey : [NSNumber numberWithInteger:kCVPixelFormatType_32BGRA]};
+
+        _frameBufferQueue = dispatch_queue_create("frameQueue", DISPATCH_QUEUE_SERIAL);
+        [self.videoOutput setSampleBufferDelegate:self queue:_frameBufferQueue];
+        self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
+
+        [self.session beginConfiguration];
+        if ([self.session canAddOutput:self.videoOutput]){
+            [self.session addOutput:self.videoOutput];
+        }
+        [self.session commitConfiguration];
+
         [self setupVideoStreamCapture];
         [self setupOrDisableBarcodeScanner];
 
@@ -819,19 +834,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     NSString *path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".mov"];
     NSURL *outputURL = [[NSURL alloc] initFileURLWithPath:path];
-
-    self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-    self.videoOutput.videoSettings = @{ (id)kCVPixelBufferPixelFormatTypeKey : [NSNumber numberWithInteger:kCVPixelFormatType_32BGRA]};
-
-    _frameBufferQueue = dispatch_queue_create("frameQueue", DISPATCH_QUEUE_SERIAL);
-    [self.videoOutput setSampleBufferDelegate:self queue:_frameBufferQueue];
-    self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
-
-    [self.session beginConfiguration];
-    if ([self.session canAddOutput:self.videoOutput]){
-        [self.session addOutput:self.videoOutput];
-    }
-    [self.session commitConfiguration];
 
     NSError *error = nil;
     NSDictionary *outputSettings = [self.videoOutput recommendedVideoSettingsForAssetWriterWithOutputFileType:AVFileTypeQuickTimeMovie];
