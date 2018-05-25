@@ -35,7 +35,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         self.bridge = bridge;
         self.session = [AVCaptureSession new];
         self.sessionQueue = dispatch_queue_create("cameraQueue", DISPATCH_QUEUE_SERIAL);
-        self.frameBufferQueue = dispatch_queue_create("frameQueue", DISPATCH_QUEUE_SERIAL);
         self.faceDetectorManager = [self createFaceDetectorManager];
 #if !(TARGET_IPHONE_SIMULATOR)
         self.previewLayer =
@@ -409,56 +408,37 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 - (void)record:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-    [self setupVideoStreamCapture];
-
-    if (_videoRecordedResolve != nil || _videoRecordedReject != nil) {
-      return;
-    }
-
     if (options[@"quality"]) {
         [self updateSessionPreset:[RNCameraUtils captureSessionPresetForVideoResolution:(RNCameraVideoResolution)[options[@"quality"] integerValue]]];
     }
 
-    if (options[@"inputFps"] && options[@"outputFps"]) {
-        self.animationInputFps = [options[@"inputFps"] integerValue];
-        self.animationOutputFps = [options[@"outputFps"] integerValue];
-        self.animationOutputSize = CGSizeMake([options[@"outputWidth"] integerValue], [options[@"outputHeight"] integerValue]);
-    }
-
     if ([options[@"mirrorImage"] boolValue]) {
-        self.mirrorImage = [options[@"mirrorImage"] boolValue];
+        self.mirrorImage = true;
     }
 
     if (options[@"maxDuration"]) {
         self.maxDuration = [options[@"maxDuration"] floatValue];
     }
 
+    [self setupVideoStreamCapture];
     [self updateSessionAudioIsMuted:!!options[@"mute"]];
 
     // Set flag that notifies 'didOutputSampleBuffer' delegate method to initialize writer with buffer presentation timestamp
     self.canAppendBuffer = YES;
     self.videoRecordedResolve = resolve;
     self.videoRecordedReject = reject;
-
-    dispatch_async(self.sessionQueue, ^{
-        [self updateFlashMode];
-    });
 }
 
 - (void)stopAssetWriter {
     self.canAppendBuffer = NO;
     [self.writerInput markAsFinished];
     [self.videoWriter finishWritingWithCompletionHandler:^{
-        if (self.videoWriter.status != AVAssetWriterStatusFailed) {
-            [self processVideoToAnimation:self.videoWriter.outputURL];
-        } else if (self.videoRecordedReject != nil) {
+        if (self.videoWriter.status == AVAssetWriterStatusFailed) {
             self.videoRecordedReject(@"E_RECORDING_FAILED", @"An error occurred while recording a video.", nil);
+            return;
         }
 
-        [self.session removeOutput:self.videoOutput];
-        self.videoOutput = nil;
-        self.writerInput = nil;
-        self.videoWriter = nil;
+        self.videoRecordedResolve(@{ @"uri": self.videoWriter.outputURL.absoluteString });
     }];
 }
 
@@ -476,6 +456,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
                 self.maxDurationTimer = [NSTimer scheduledTimerWithTimeInterval:self.maxDuration target:self selector:@selector(stopAssetWriter) userInfo:nil repeats:NO];
             });
         }
+
         [self.writerInput appendSampleBuffer:sampleBuffer];
     }
 }
@@ -577,13 +558,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
 #if __has_include(<GoogleMobileVision/GoogleMobileVision.h>)
         [_faceDetectorManager maybeStartFaceDetectionOnSession:_session withPreviewLayer:_previewLayer];
-#else
-        // If AVCaptureVideoDataOutput is not required because of Google Vision
-        // (see comment in -record), we go ahead and add the AVCaptureMovieFileOutput
-        // to avoid an exposure rack on some devices that can cause the first few
-        // frames of the recorded output to be underexposed.
-        [self setupVideoStreamCapture];
 #endif
+        [self setupVideoStreamCapture];
         [self setupOrDisableBarcodeScanner];
 
         __weak RNCamera *weakSelf = self;
@@ -819,15 +795,15 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
                                             @"type" : codeMetadata.type,
                                             @"data" : codeMetadata.stringValue,
                                             @"bounds": @{
-                                                @"origin": @{
-                                                    @"x": [NSString stringWithFormat:@"%f", transformed.bounds.origin.x],
-                                                    @"y": [NSString stringWithFormat:@"%f", transformed.bounds.origin.y]
-                                                },
-                                                @"size": @{
-                                                    @"height": [NSString stringWithFormat:@"%f", transformed.bounds.size.height],
-                                                    @"width": [NSString stringWithFormat:@"%f", transformed.bounds.size.width]
-                                                }
-                                            }
+                                                    @"origin": @{
+                                                            @"x": [NSString stringWithFormat:@"%f", transformed.bounds.origin.x],
+                                                            @"y": [NSString stringWithFormat:@"%f", transformed.bounds.origin.y]
+                                                            },
+                                                    @"size": @{
+                                                            @"height": [NSString stringWithFormat:@"%f", transformed.bounds.size.height],
+                                                            @"width": [NSString stringWithFormat:@"%f", transformed.bounds.size.width]
+                                                            }
+                                                    }
                                             };
 
                     [self onCodeRead:event];
@@ -844,120 +820,33 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     NSString *path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".mov"];
     NSURL *outputURL = [[NSURL alloc] initFileURLWithPath:path];
 
-    NSError *error = nil;
-    self.videoWriter = [[AVAssetWriter alloc] initWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
-    self.writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:nil];
-    [self.videoWriter addInput:self.writerInput];
-
     self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-    [self.videoOutput setSampleBufferDelegate:self queue:self.frameBufferQueue];
-    if ( [self.session canAddOutput:self.videoOutput] ){
+    self.videoOutput.videoSettings = @{ (id)kCVPixelBufferPixelFormatTypeKey : [NSNumber numberWithInteger:kCVPixelFormatType_32BGRA]};
+
+    _frameBufferQueue = dispatch_queue_create("frameQueue", DISPATCH_QUEUE_SERIAL);
+    [self.videoOutput setSampleBufferDelegate:self queue:_frameBufferQueue];
+    self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
+
+    [self.session beginConfiguration];
+    if ([self.session canAddOutput:self.videoOutput]){
         [self.session addOutput:self.videoOutput];
     }
+    [self.session commitConfiguration];
+
+    NSError *error = nil;
+    NSDictionary *outputSettings = [self.videoOutput recommendedVideoSettingsForAssetWriterWithOutputFileType:AVFileTypeQuickTimeMovie];
+    self.videoWriter = [[AVAssetWriter alloc] initWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
+    self.writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:outputSettings];
+
+    if (error != nil) {
+        self.videoRecordedReject(RCTErrorUnspecified, nil, RCTErrorWithMessage(error.description));
+        return;
+    }
+
+    [self.videoWriter addInput:self.writerInput];
 
     AVCaptureConnection *connection = [self.videoOutput connectionWithMediaType:AVMediaTypeVideo];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [connection setVideoOrientation:[RNCameraUtils videoOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]]];
-    });
-}
-
-# pragma mark - Animation creator
-
-- (void)processVideoToAnimation:(NSURL *)outputFileURL {
-    AVURLAsset* videoAsAsset = [AVURLAsset URLAssetWithURL:outputFileURL options:nil];
-    AVAssetTrack* videoTrack = [[videoAsAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
-
-    float videoWidth;
-    float videoHeight;
-
-    CGSize videoSize = [videoTrack naturalSize];
-    CGAffineTransform txf = [videoTrack preferredTransform];
-
-    if ((txf.tx == videoSize.width && txf.ty == videoSize.height) || (txf.tx == 0 && txf.ty == 0)) {
-        // Video recorded in landscape orientation
-        videoWidth = videoSize.width;
-        videoHeight = videoSize.height;
-    } else {
-        // Video recorded in portrait orientation, so have to swap reported width/height
-        videoWidth = videoSize.height;
-        videoHeight = videoSize.width;
-    }
-
-    // The video is recorded at the full native FPS of the camera so that
-    // there is no motion blur due to the longer exposure. Because of this,
-    // we need to essentially delete frames to arrive at the target FPS for
-    // the animation.
-    double lengthInSeconds = CMTimeGetSeconds(videoAsAsset.duration);
-    int64_t framesNeeded = lengthInSeconds * _animationInputFps;
-    double step = lengthInSeconds / framesNeeded;
-
-    NSMutableArray *framesToKeep = [NSMutableArray arrayWithCapacity:framesNeeded];
-    NSMutableArray *animatedFrames = [NSMutableArray arrayWithCapacity:framesNeeded * 2];
-
-    for (int i = 0; i < framesNeeded; i++) {
-        CMTime time = CMTimeMakeWithSeconds(i * step, videoAsAsset.duration.timescale);
-        [framesToKeep addObject: [NSValue valueWithCMTime:time]];
-    }
-
-    AVAssetImageGenerator *frameGenerator = [AVAssetImageGenerator assetImageGeneratorWithAsset:videoAsAsset];
-    frameGenerator.appliesPreferredTrackTransform = true;
-    frameGenerator.apertureMode = AVAssetImageGeneratorApertureModeCleanAperture;
-    frameGenerator.requestedTimeToleranceBefore = kCMTimeZero;
-    frameGenerator.requestedTimeToleranceAfter = kCMTimeZero;
-    [frameGenerator generateCGImagesAsynchronouslyForTimes:framesToKeep completionHandler:^(CMTime requestedTime, CGImageRef  _Nullable image, CMTime actualTime, AVAssetImageGeneratorResult result, NSError * _Nullable error) {
-        if (error != nil || image == nil) {
-            if (frameGenerator != nil) {
-                [frameGenerator cancelAllCGImageGeneration];
-            }
-            return;
-        }
-
-        CGImageRetain(image);
-        [animatedFrames addObject:(__bridge id)image];
-        CGImageRelease(image);
-
-        // To achieve the back and forth affect we're going for, we simply
-        // duplicate the existing frames in reverse. This is more efficient
-        // than including the timestamps in the original list of times for
-        // the AVAssetImageGenerator to parse.
-        if (animatedFrames.count == framesToKeep.count) {
-            NSUInteger originalFrameCount = animatedFrames.count - 1;
-            for (int i = 0; i < originalFrameCount; i++) {
-                NSUInteger reversePosition = originalFrameCount - i;
-                [animatedFrames addObject:[animatedFrames objectAtIndex:reversePosition]];
-            }
-
-            [self animationFramesToVideo:animatedFrames];
-        }
-    }];
-    return;
-}
-
-- (NSDictionary *)animationOutputSettings
-{
-    return @{
-             AVVideoCodecKey: AVVideoCodecH264,
-             AVVideoWidthKey: [NSNumber numberWithInt: self.animationOutputSize.width],
-             AVVideoHeightKey: [NSNumber numberWithInt: self.animationOutputSize.height],
-             AVVideoCompressionPropertiesKey: @{
-                     AVVideoAverageBitRateKey: @1000000, // 1Mbps
-                     AVVideoMaxKeyFrameIntervalKey: [NSNumber numberWithInt: self.animationOutputFps],
-                     AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
-                     AVVideoAllowFrameReorderingKey: @false,
-                     AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC,
-                     AVVideoExpectedSourceFrameRateKey: @30,
-                     AVVideoAverageNonDroppableFrameRateKey: [NSNumber numberWithInt: self.animationOutputFps],
-                     }
-             };
-}
-
-- (NSDictionary *)animationPixelBufferSettings
-{
-    return @{
-             (id)kCVPixelBufferPixelFormatTypeKey: [NSNumber numberWithUnsignedInt: kCVPixelFormatType_32ARGB],
-             (id)kCVPixelBufferWidthKey: [NSNumber numberWithInt: self.animationOutputSize.width],
-             (id)kCVPixelBufferHeightKey: [NSNumber numberWithInt: self.animationOutputSize.height],
-             };
+    [connection setVideoOrientation:[RNCameraUtils videoOrientationForDeviceOrientation:[[UIDevice currentDevice] orientation]]];
 }
 
 - (void)drawMirrored:(CGContextRef)context width:(double)width
@@ -965,100 +854,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(width, 0.0);
     transform = CGAffineTransformScale(transform, -1.0, 1.0);
     CGContextConcatCTM(context, transform);
-}
-
-- (void)animationFramesToVideo:(NSMutableArray *)animatedFrames
-{
-    NSString *outputName = [[NSProcessInfo processInfo] globallyUniqueString];
-    NSURL *fullPath = [NSURL fileURLWithPath: [NSString stringWithFormat:@"%@%@.mp4", NSTemporaryDirectory(), outputName]];
-
-    NSError *writeError;
-    AVAssetWriter *videoWriter = [AVAssetWriter assetWriterWithURL:fullPath fileType:AVFileTypeMPEG4 error:&writeError];
-
-    if (writeError != nil) {
-        self.videoRecordedReject(RCTErrorUnspecified, nil, RCTErrorWithMessage(writeError.description));
-        return;
-    }
-
-    videoWriter.shouldOptimizeForNetworkUse = true;
-
-    AVAssetWriterInput *animatedFrameInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:self.animationOutputSettings];
-
-    AVAssetWriterInputPixelBufferAdaptor *animatedPixelBuffer = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:animatedFrameInput sourcePixelBufferAttributes:self.animationPixelBufferSettings];
-
-    if ([videoWriter canAddInput:animatedFrameInput]) {
-        [videoWriter addInput:animatedFrameInput];
-    }
-
-    [videoWriter startWriting];
-    [videoWriter startSessionAtSourceTime:kCMTimeZero];
-
-    CGFloat videoOffsetHeight = (1280.0 / 720.0) * self.animationOutputSize.width;
-    CGFloat videoOffsetY = (videoOffsetHeight - self.animationOutputSize.height) / 2;
-
-    CMTime frameDuration = CMTimeMake(1, self.animationOutputFps);
-
-    Boolean appendSucceeded = true;
-
-    for (int frameCount = 0; frameCount < animatedFrames.count; frameCount++) {
-        CGImageRef nextPhoto = (__bridge CGImageRef)[animatedFrames objectAtIndex:frameCount];
-        CMTime lastFrameTime = CMTimeMultiply(frameDuration, frameCount);
-        CMTime presentationTime = frameCount == 0 ? lastFrameTime : CMTimeAdd(lastFrameTime, frameDuration);
-
-        CVPixelBufferRef pixelBuffer;
-        CVReturn status = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, [animatedPixelBuffer pixelBufferPool], &pixelBuffer);
-
-        while (!animatedFrameInput.readyForMoreMediaData) {
-            [NSThread sleepForTimeInterval:0.1];
-        }
-
-        if (status == 0) {
-            CVPixelBufferRef managedPixelBuffer = pixelBuffer;
-            CVPixelBufferLockBaseAddress(managedPixelBuffer, 0);
-
-            CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
-            CGContextRef context = CGBitmapContextCreate(CVPixelBufferGetBaseAddress(managedPixelBuffer), self.animationOutputSize.width, self.animationOutputSize.height, 8, CVPixelBufferGetBytesPerRow(managedPixelBuffer), rgbColorSpace, 2);
-            CGContextClearRect(context, CGRectMake(0, 0, self.animationOutputSize.width, _animationOutputSize.height));
-
-            if (self.mirrorImage) {
-                [self drawMirrored:context width:_animationOutputSize.width];
-            }
-
-            CGContextDrawImage(context, CGRectMake(0, 0 - videoOffsetY, _animationOutputSize.width, videoOffsetHeight), nextPhoto);
-
-            if (self.mirrorImage) {
-                [self drawMirrored:context width:_animationOutputSize.width];
-            }
-
-            if (self.overlayImage.CGImage != nil) {
-                CGContextDrawImage(context, CGRectMake(0, 0, self.animationOutputSize.width, self.animationOutputSize.height), self.overlayImage.CGImage);
-            }
-
-            CVPixelBufferUnlockBaseAddress(managedPixelBuffer, 0);
-
-            appendSucceeded = [animatedPixelBuffer appendPixelBuffer:pixelBuffer withPresentationTime:presentationTime];
-
-            CGContextRelease(context);
-            CGColorSpaceRelease(rgbColorSpace);
-            CVPixelBufferRelease(pixelBuffer);
-        } else {
-            self.videoRecordedReject(RCTErrorUnspecified, nil, RCTErrorWithMessage(@"Failed to allocate pixel buffer"));
-            appendSucceeded = false;
-        }
-    }
-
-    [animatedFrameInput markAsFinished];
-    [videoWriter finishWritingWithCompletionHandler:^{
-        self.videoRecordedResolve(@{ @"uri": fullPath.absoluteString });
-
-        self.videoRecordedResolve = nil;
-        self.videoRecordedReject = nil;
-        self.videoCodecType = nil;
-
-        if (self.session.sessionPreset != AVCaptureSessionPresetHigh) {
-            [self updateSessionPreset:AVCaptureSessionPresetHigh];
-        }
-    }];
 }
 
 # pragma mark - Face detector
