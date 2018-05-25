@@ -34,15 +34,10 @@
 @property(nonatomic, assign, getter=isReadingBarCodes) BOOL barCodeReading;
 @property(nonatomic, assign) AVVideoCodecType videoCodecType;
 
-@property(nonatomic, assign) CGSize animationOutputSize;
-@property(nonatomic, assign) int64_t animationInputFps;
-@property(nonatomic, assign) int64_t animationOutputFps;
-
 @property(nonatomic, strong) dispatch_queue_t frameBufferQueue;
 @property(nonatomic, strong) AVAssetWriter *videoWriter;
 @property(nonatomic, strong) AVAssetWriterInput* writerInput;
 @property(nonatomic, strong) AVCaptureVideoDataOutput* videoOutput;
-@property(nonatomic, strong) NSTimer* maxDurationTimer;
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
@@ -67,8 +62,6 @@
 - (void)onMountingError:(NSDictionary *)event;
 - (void)onCodeRead:(NSDictionary *)event;
 - (void)onFacesDetected:(NSDictionary *)event;
-
-- (void)processVideoToAnimation:(NSURL *)outputFileURL;
 - (void)stopAssetWriter;
 
 @end
