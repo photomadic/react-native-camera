@@ -485,7 +485,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 -(void)findPrimaryFace:(CMSampleBufferRef)sampleBuffer API_AVAILABLE(ios(11.0)) {
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
-    CIImage *orientedImage = [image imageByApplyingCGOrientation:kCGImagePropertyOrientationLeftMirrored];
+    CIImage *orientedImage = [image imageByApplyingCGOrientation:kCGImagePropertyOrientationUpMirrored];
 
     VNDetectFaceRectanglesRequest *faceDetectionReq = [VNDetectFaceRectanglesRequest new];
     NSDictionary *d = [[NSDictionary alloc] init];
