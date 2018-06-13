@@ -506,7 +506,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
-        [self drawFaceRect:self.mainFace];
+        if (self.enableTrackingRectangle) [self drawFaceRect:self.mainFace];
         [self setExposureAtPoint:devicePoint];
     });
 }
@@ -585,6 +585,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        return;
     //    }
     self.canAppendBuffer = NO;
+    self.enableTrackingRectangle = NO;
 
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
