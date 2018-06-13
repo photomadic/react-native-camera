@@ -497,8 +497,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         return;
     };
 
-    NSLog(@"---found face");
-
     if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
         [self establishPrimaryFace:faceDetectionReq];
     } else {
