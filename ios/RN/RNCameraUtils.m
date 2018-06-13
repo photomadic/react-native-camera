@@ -90,8 +90,6 @@
     }
 }
 
-
-
 + (float)temperatureForWhiteBalance:(RNCameraWhiteBalance)whiteBalance
 {
     switch (whiteBalance) {
