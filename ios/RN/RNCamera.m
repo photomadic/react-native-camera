@@ -485,7 +485,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 -(void)findPrimaryFace:(CMSampleBufferRef)sampleBuffer API_AVAILABLE(ios(11.0)) {
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
-    CIImage *orientedImage = [image imageByApplyingCGOrientation:kCGImagePropertyOrientationUpMirrored];
+    CIImage *orientedImage = [image imageByApplyingCGOrientation:self.facialTrackingOrientation];
 
     VNDetectFaceRectanglesRequest *faceDetectionReq = [VNDetectFaceRectanglesRequest new];
     NSDictionary *d = [[NSDictionary alloc] init];
@@ -496,6 +496,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         self.primaryFaceCenter = CGPointZero;
         return;
     };
+
+    NSLog(@"---found face");
 
     if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
         [self establishPrimaryFace:faceDetectionReq];
@@ -564,6 +566,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        return;
     //    }
     self.canAppendBuffer = NO;
+    self.facialTrackingOrientation = [RNCameraUtils imageOrientationForFacialTracking:[[UIApplication sharedApplication] statusBarOrientation]:[self.videoCaptureDeviceInput device].position];
 
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
@@ -757,6 +760,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     __weak typeof(self) weakSelf = self;
     AVCaptureVideoOrientation videoOrientation = [RNCameraUtils videoOrientationForInterfaceOrientation:orientation];
+    self.facialTrackingOrientation = [RNCameraUtils imageOrientationForFacialTracking:[[UIApplication sharedApplication] statusBarOrientation]:[self.videoCaptureDeviceInput device].position];
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf && strongSelf.previewLayer.connection.isVideoOrientationSupported) {
