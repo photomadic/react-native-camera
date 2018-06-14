@@ -587,6 +587,8 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 #if TARGET_IPHONE_SIMULATOR
     return;
 #endif
+    self.canAppendBuffer = NO;
+
     void (^orientationBlock)(void) = ^() {
         self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
     };
