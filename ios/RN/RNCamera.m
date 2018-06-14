@@ -494,6 +494,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     if (!faceDetectionReq.results.count) {
         self.primaryFaceCenter = CGPointZero;
+        [self drawFaceRect:nil];
         #ifdef DEBUG
         [self drawFaceRect:nil];
         #endif
@@ -503,12 +504,14 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
         [self establishPrimaryFace:faceDetectionReq];
     } else {
-        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
+//        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
+        [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
     }
 
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
+        [self drawFaceRect:self.mainFace];
         #ifdef DEBUG
           [self drawFaceRect:self.mainFace];
         #endif
@@ -529,20 +532,45 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
 }
 
-- (void)trackPrimaryFace:(VNDetectFaceRectanglesRequest*)faceDetectionReq :(CGPoint)primaryFace  API_AVAILABLE(ios(11.0)){
-    double smallestDist = INFINITY;
-    for (VNFaceObservation *observation in faceDetectionReq.results) {
-        CGPoint center = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
-        double distX = (primaryFace.x - center.x);
-        double distY = (primaryFace.y - center.y);
-        double dist = sqrt(distX * distX + distY * distY);
+//- (void)trackPrimaryFace:(VNDetectFaceRectanglesRequest*)faceDetectionReq :(CGPoint)primaryFace  API_AVAILABLE(ios(11.0)){
+//    double smallestDist = INFINITY;
+//    for (VNFaceObservation *observation in faceDetectionReq.results) {
+//        CGPoint center = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+//        double distX = (primaryFace.x - center.x);
+//        double distY = (primaryFace.y - center.y);
+//        double dist = sqrt(distX * distX + distY * distY);
+//
+//        if (dist < smallestDist) {
+//            smallestDist = dist;
+//            self.mainFace = observation;
+//            self.primaryFaceCenter = center;
+//        }
+//    }
+//}
 
-        if (dist < smallestDist) {
-            smallestDist = dist;
+- (void)trackPrimaryFace:(CMSampleBufferRef)sampleBuffer withFace:(VNDetectedObjectObservation)mainFace  API_AVAILABLE(ios(11.0)){
+    VNTrackObjectRequest *trackRequest = [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:mainFace completionHandler:^(VNRequest *_Nonnull request, NSError *_Nullable error) {
+        if (error == nil && request.results.count) {
+            NSLog(@"%@", request.results.firstObject);
+            VNDetectedObjectObservation observation = request.results.firstObject;
+            [self drawFaceRect:observation];
             self.mainFace = observation;
-            self.primaryFaceCenter = center;
+            self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+            return;
         }
-    }
+        self.primaryFaceCenter = CGPointZero;
+
+    }];
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
+    CIImage *orientedImage = [image imageByApplyingCGOrientation:self.facialTrackingOrientation];
+
+    trackRequest.trackingLevel = VNRequestTrackingLevelAccurate;
+
+    NSMutableArray<VNTrackObjectRequest *> *observationRequest = [NSMutableArray array];
+    [observationRequest addObject:trackRequest];
+
+    [self.trackingHandler performRequests:observationRequest onCIImage:orientedImage error:nil];
 }
 
 -(void)drawFaceRect:(VNFaceObservation *)observation  API_AVAILABLE(ios(11.0)){
