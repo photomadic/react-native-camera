@@ -506,7 +506,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
-        if (self.enableTrackingRectangle) [self drawFaceRect:self.mainFace];
+        #ifdef DEBUG
+          [self drawFaceRect:self.mainFace];
+        #endif
         [self setExposureAtPoint:devicePoint];
     });
 }
