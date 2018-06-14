@@ -492,8 +492,11 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCIImage:orientedImage options:d];
     [handler performRequests:@[faceDetectionReq] error:nil];
 
-    if (![faceDetectionReq.results count]) {
+    if (!faceDetectionReq.results.count) {
         self.primaryFaceCenter = CGPointZero;
+        #ifdef DEBUG
+        [self drawFaceRect:nil];
+        #endif
         return;
     };
 
@@ -545,6 +548,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 -(void)drawFaceRect:(VNFaceObservation *)observation  API_AVAILABLE(ios(11.0)){
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.faceRect removeFromSuperlayer];
+        if (observation == nil) {
+            return;
+        }
 
         CGRect boundingBox = observation.boundingBox;
         CGSize size = CGSizeMake(boundingBox.size.width * self.layer.bounds.size.width, boundingBox.size.height * self.layer.bounds.size.height);
@@ -581,13 +587,16 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 #if TARGET_IPHONE_SIMULATOR
     return;
 #endif
-    //    NSDictionary *cameraPermissions = [EXCameraPermissionRequester permissions];
-    //    if (![cameraPermissions[@"status"] isEqualToString:@"granted"]) {
-    //        [self onMountingError:@{@"message": @"Camera permissions not granted - component could not be rendered."}];
-    //        return;
-    //    }
     self.canAppendBuffer = NO;
-    self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
+
+    void (^orientationBlock)(void) = ^() {
+        self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
+    };
+    if ([NSThread isMainThread]) {
+        orientationBlock();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), orientationBlock);
+    }
 
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
@@ -655,15 +664,13 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
     __block UIInterfaceOrientation interfaceOrientation;
 
-    void (^statusBlock)() = ^() {
+    void (^statusBlock)(void) = ^() {
         interfaceOrientation = [[UIApplication sharedApplication] statusBarOrientation];
     };
     if ([NSThread isMainThread]) {
         statusBlock();
     } else {
-        NSLog(@"I AM BLOCKING!!!!");
         dispatch_sync(dispatch_get_main_queue(), statusBlock);
-        NSLog(@"I AM DONE BLOCKING");
     }
 
     AVCaptureVideoOrientation orientation = [RNCameraUtils videoOrientationForInterfaceOrientation:interfaceOrientation];
