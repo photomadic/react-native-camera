@@ -60,9 +60,9 @@
     }
 }
 
-+ (CGImagePropertyOrientation)imageOrientationForFacialTracking:(UIInterfaceOrientation)orientation :(AVCaptureDevicePosition)camera
++ (CGImagePropertyOrientation)imageOrientationForInterfaceOrientation:(UIInterfaceOrientation)orientation withDevicePosition:(AVCaptureDevicePosition)position
 {
-    if (camera == AVCaptureDevicePositionFront) {
+    if (position == AVCaptureDevicePositionFront) {
         switch (orientation) {
             case UIInterfaceOrientationPortrait:
                 return kCGImagePropertyOrientationLeftMirrored;

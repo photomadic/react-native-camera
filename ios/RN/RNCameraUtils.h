@@ -18,6 +18,6 @@
 + (NSString *)captureSessionPresetForVideoResolution:(RNCameraVideoResolution)resolution;
 + (AVCaptureVideoOrientation)videoOrientationForInterfaceOrientation:(UIInterfaceOrientation)orientation;
 + (CGAffineTransform)videoTransformForOrientation:(UIInterfaceOrientation)orientation;
-+ (CGImagePropertyOrientation)imageOrientationForFacialTracking:(UIInterfaceOrientation)orientation :(AVCaptureDevicePosition)camera;
++ (CGImagePropertyOrientation)imageOrientationForInterfaceOrientation:(UIInterfaceOrientation)orientation withDevicePosition:(AVCaptureDevicePosition)position;
 
 @end
