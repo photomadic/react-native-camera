@@ -15,14 +15,14 @@
 {
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:mediaType];
     AVCaptureDevice *captureDevice = [devices firstObject];
-    
+
     for (AVCaptureDevice *device in devices) {
         if ([device position] == position) {
             captureDevice = device;
             break;
         }
     }
-    
+
     return captureDevice;
 }
 
@@ -57,6 +57,36 @@
             return CGAffineTransformMakeRotation(0 / 180);
         default:
             return CGAffineTransformMakeRotation(0 / 180);
+    }
+}
+
++ (CGImagePropertyOrientation)imageOrientationForInterfaceOrientation:(UIInterfaceOrientation)orientation withDevicePosition:(AVCaptureDevicePosition)position
+{
+    if (position == AVCaptureDevicePositionFront) {
+        switch (orientation) {
+            case UIInterfaceOrientationPortrait:
+                return kCGImagePropertyOrientationLeftMirrored;
+            case UIInterfaceOrientationPortraitUpsideDown:
+                return kCGImagePropertyOrientationRightMirrored;
+            case UIInterfaceOrientationLandscapeLeft:
+                return kCGImagePropertyOrientationUpMirrored;
+            case UIInterfaceOrientationLandscapeRight:
+                return kCGImagePropertyOrientationDownMirrored;
+            default:
+                return 0;
+        }
+    }
+    switch (orientation) {
+        case UIInterfaceOrientationPortrait:
+            return kCGImagePropertyOrientationRight;
+        case UIInterfaceOrientationPortraitUpsideDown:
+            return kCGImagePropertyOrientationLeft;
+        case UIInterfaceOrientationLandscapeLeft:
+            return kCGImagePropertyOrientationDown;
+        case UIInterfaceOrientationLandscapeRight:
+            return kCGImagePropertyOrientationUp;
+        default:
+            return 0;
     }
 }
 
@@ -95,4 +125,3 @@
 }
 
 @end
-

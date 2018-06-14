@@ -455,7 +455,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     });
 }
 
-- (void)stopAssetWriter
+- (void)stopRecording
 {
     self.canAppendBuffer = NO;
     [self.writerInput markAsFinished];
@@ -485,7 +485,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 -(void)findPrimaryFace:(CMSampleBufferRef)sampleBuffer API_AVAILABLE(ios(11.0)) {
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
-    CIImage *orientedImage = [image imageByApplyingCGOrientation:kCGImagePropertyOrientationUpMirrored];
+    CIImage *orientedImage = [image imageByApplyingCGOrientation:self.facialTrackingOrientation];
 
     VNDetectFaceRectanglesRequest *faceDetectionReq = [VNDetectFaceRectanglesRequest new];
     NSDictionary *d = [[NSDictionary alloc] init];
@@ -587,6 +587,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        return;
     //    }
     self.canAppendBuffer = NO;
+    self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
 
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
@@ -780,6 +781,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     __weak typeof(self) weakSelf = self;
     AVCaptureVideoOrientation videoOrientation = [RNCameraUtils videoOrientationForInterfaceOrientation:orientation];
+    self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf && strongSelf.previewLayer.connection.isVideoOrientationSupported) {

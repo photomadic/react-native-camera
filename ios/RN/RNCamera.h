@@ -43,9 +43,11 @@
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
 @property(nonatomic, assign) CGPoint primaryFaceCenter;
-@property (nonatomic, strong) CAShapeLayer *faceRect;
-@property (nonatomic, strong) CAShapeLayer *exposureSquare;
-@property (nonatomic, strong) VNFaceObservation *mainFace;
+@property(nonatomic, assign) CGImagePropertyOrientation facialTrackingOrientation;
+
+@property(nonatomic, strong) CAShapeLayer *faceRect;
+@property(nonatomic, strong) CAShapeLayer *exposureSquare;
+@property(nonatomic, strong) VNFaceObservation *mainFace;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
@@ -66,6 +68,5 @@
 - (void)onMountingError:(NSDictionary *)event;
 - (void)onCodeRead:(NSDictionary *)event;
 - (void)onFacesDetected:(NSDictionary *)event;
-- (void)stopAssetWriter;
 
 @end
