@@ -587,7 +587,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     //        return;
     //    }
     self.canAppendBuffer = NO;
-    self.enableTrackingRectangle = NO;
 
     dispatch_async(self.sessionQueue, ^{
         if (self.presetCamera == AVCaptureDevicePositionUnspecified) {

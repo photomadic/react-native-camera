@@ -43,7 +43,6 @@
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
 @property(nonatomic, assign) CGPoint primaryFaceCenter;
-@property(nonatomic, assign) BOOL enableTrackingRectangle;
 @property (nonatomic, strong) CAShapeLayer *faceRect;
 @property (nonatomic, strong) CAShapeLayer *exposureSquare;
 @property (nonatomic, strong) VNFaceObservation *mainFace;
