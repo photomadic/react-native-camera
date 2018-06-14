@@ -2,6 +2,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTBridgeModule.h>
 #import <UIKit/UIKit.h>
+#import <Vision/Vision.h>
 
 #if __has_include("RNFaceDetectorManager.h")
 #import "RNFaceDetectorManager.h"
@@ -43,6 +44,10 @@
 @property(nonatomic, assign) Float64 maxDuration;
 @property(nonatomic, assign) CGPoint primaryFaceCenter;
 @property(nonatomic, assign) CGImagePropertyOrientation facialTrackingOrientation;
+
+@property(nonatomic, strong) CAShapeLayer *faceRect;
+@property(nonatomic, strong) CAShapeLayer *exposureSquare;
+@property(nonatomic, strong) VNFaceObservation *mainFace;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;

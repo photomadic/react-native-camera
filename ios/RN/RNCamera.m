@@ -506,6 +506,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
+        #ifdef DEBUG
+          [self drawFaceRect:self.mainFace];
+        #endif
         [self setExposureAtPoint:devicePoint];
     });
 }
@@ -517,6 +520,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
         if (CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero) || size > primaryFaceSize) {
             self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+            self.mainFace = observation;
             primaryFaceSize = size;
         }
     }
@@ -532,9 +536,28 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
         if (dist < smallestDist) {
             smallestDist = dist;
+            self.mainFace = observation;
             self.primaryFaceCenter = center;
         }
     }
+}
+
+-(void)drawFaceRect:(VNFaceObservation *)observation  API_AVAILABLE(ios(11.0)){
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.faceRect removeFromSuperlayer];
+
+        CGRect boundingBox = observation.boundingBox;
+        CGSize size = CGSizeMake(boundingBox.size.width * self.layer.bounds.size.width, boundingBox.size.height * self.layer.bounds.size.height);
+        CGPoint origin = CGPointMake(boundingBox.origin.x * self.layer.bounds.size.width, (1-boundingBox.origin.y) * self.layer.bounds.size.height - size.height);
+
+        self.faceRect = [CAShapeLayer layer];
+
+        self.faceRect.frame = CGRectMake(origin.x, origin.y, size.width, size.height);
+        self.faceRect.borderColor = [UIColor redColor].CGColor;
+        self.faceRect.borderWidth = 2;
+
+        [self.layer addSublayer:self.faceRect];
+    });
 }
 
 - (void)setExposureAtPoint:(CGPoint)point
