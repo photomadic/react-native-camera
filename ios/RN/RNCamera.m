@@ -494,9 +494,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     if (!faceDetectionReq.results.count) {
         self.mainFaceCenter = CGPointZero;
-#ifdef DEBUG
-        [self drawFaceRect:nil];
-#endif
+        #ifdef DEBUG
+            [self drawFaceRect:nil];
+        #endif
         return;
     };
 
@@ -509,9 +509,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.mainFaceCenter.x * self.layer.bounds.size.width, (1-self.mainFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
-#ifdef DEBUG
-        [self drawFaceRect:self.mainFace];
-#endif
+        #ifdef DEBUG
+            [self drawFaceRect:self.mainFace];
+        #endif
         [self setExposureAtPoint:devicePoint];
     });
 }
@@ -534,9 +534,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         if (error == nil && request.results.count) {
             VNDetectedObjectObservation *observation = request.results.firstObject;
             [self drawFaceRect:observation];
-#ifdef DEBUG
-            [self drawFaceRect:observation];
-#endif
+            #ifdef DEBUG
+                [self drawFaceRect:observation];
+            #endif
             self.mainFace = observation;
             self.mainFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
             return;
