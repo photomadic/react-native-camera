@@ -12,6 +12,7 @@
 
 @class RNCamera;
 
+API_AVAILABLE(ios(11.0))
 @interface RNCamera : UIView <AVCaptureMetadataOutputObjectsDelegate, RNFaceDetectorDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property(nonatomic, strong) dispatch_queue_t sessionQueue;
@@ -48,8 +49,7 @@
 @property(nonatomic, strong) CAShapeLayer *faceRect;
 @property(nonatomic, strong) CAShapeLayer *exposureSquare;
 @property(nonatomic, strong) VNDetectedObjectObservation *mainFace;
-@property(nonatomic, assign) CGPoint primaryFaceCenter;
-
+@property(nonatomic, assign) CGPoint mainFaceCenter;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;

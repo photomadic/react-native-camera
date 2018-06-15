@@ -493,7 +493,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     [handler performRequests:@[faceDetectionReq] error:nil];
 
     if (!faceDetectionReq.results.count) {
-        self.primaryFaceCenter = CGPointZero;
+        self.mainFaceCenter = CGPointZero;
         [self drawFaceRect:nil];
 #ifdef DEBUG
         [self drawFaceRect:nil];
@@ -501,15 +501,23 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         return;
     };
 
-    if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
+//    if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
+//        [self establishPrimaryFace:faceDetectionReq];
+//    } else {
+//        //        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
+//        [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
+//    }
+
+    if (CGPointEqualToPoint(self.mainFaceCenter, CGPointZero)) {
         [self establishPrimaryFace:faceDetectionReq];
+        NSLog(@"---establish");
     } else {
-        //        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
         [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
+        NSLog(@"---tracking");
     }
 
     dispatch_sync(dispatch_get_main_queue(), ^() {
-        CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
+        CGPoint scaledPoint = CGPointMake(self.mainFaceCenter.x * self.layer.bounds.size.width, (1-self.mainFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
         [self drawFaceRect:self.mainFace];
 #ifdef DEBUG
@@ -524,42 +532,24 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     for (VNFaceObservation *observation in faceDetectionReq.results) {
         if (!observation) continue;
         float size = observation.boundingBox.size.height * observation.boundingBox.size.width;
-        if (CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero) || size > primaryFaceSize) {
-            self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+        if (CGPointEqualToPoint(self.mainFaceCenter, CGPointZero) || size > primaryFaceSize) {
+            self.mainFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
             self.mainFace = observation;
             primaryFaceSize = size;
         }
     }
 }
 
-//- (void)trackPrimaryFace:(VNDetectFaceRectanglesRequest*)faceDetectionReq :(CGPoint)primaryFace  API_AVAILABLE(ios(11.0)){
-//    double smallestDist = INFINITY;
-//    for (VNFaceObservation *observation in faceDetectionReq.results) {
-//        CGPoint center = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
-//        double distX = (primaryFace.x - center.x);
-//        double distY = (primaryFace.y - center.y);
-//        double dist = sqrt(distX * distX + distY * distY);
-//
-//        if (dist < smallestDist) {
-//            smallestDist = dist;
-//            self.mainFace = observation;
-//            self.primaryFaceCenter = center;
-//        }
-//    }
-//}
-
-- (void)trackPrimaryFace:(CMSampleBufferRef)sampleBuffer withFace:(VNDetectedObjectObservation*)mainFace  API_AVAILABLE(ios(11.0)){
-    VNTrackObjectRequest *trackRequest = [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:mainFace completionHandler:^(VNRequest *_Nonnull request, NSError *_Nullable error) {
+- (void)trackPrimaryFace:(CMSampleBufferRef)sampleBuffer withFace:(VNDetectedObjectObservation*)lastObservation  API_AVAILABLE(ios(11.0)){
+    VNTrackObjectRequest *trackRequest = [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:lastObservation completionHandler:^(VNRequest *request, NSError *error) {
         if (error == nil && request.results.count) {
-            NSLog(@"%@", request.results.firstObject);
             VNDetectedObjectObservation *observation = request.results.firstObject;
             [self drawFaceRect:observation];
             self.mainFace = observation;
-            self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
+            self.mainFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
             return;
         }
-        self.primaryFaceCenter = CGPointZero;
-
+        self.mainFaceCenter = CGPointZero;
     }];
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
@@ -579,7 +569,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         if (observation == nil) {
             return;
         }
-
         CGRect boundingBox = observation.boundingBox;
         CGSize size = CGSizeMake(boundingBox.size.width * self.layer.bounds.size.width, boundingBox.size.height * self.layer.bounds.size.height);
         CGPoint origin = CGPointMake(boundingBox.origin.x * self.layer.bounds.size.width, (1-boundingBox.origin.y) * self.layer.bounds.size.height - size.height);
@@ -615,7 +604,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 #if TARGET_IPHONE_SIMULATOR
     return;
 #endif
+
     self.canAppendBuffer = NO;
+    self.trackingHandler = [[VNSequenceRequestHandler alloc] init];
 
     void (^orientationBlock)(void) = ^() {
         self.facialTrackingOrientation = [RNCameraUtils imageOrientationForInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation] withDevicePosition:[self.videoCaptureDeviceInput device].position];
