@@ -494,9 +494,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     if (!faceDetectionReq.results.count) {
         self.mainFaceCenter = CGPointZero;
-#ifdef DEBUG
-        [self drawFaceRect:nil];
-#endif
+        #ifdef DEBUG
+          [self drawFaceRect:nil];
+        #endif
         return;
     };
 
