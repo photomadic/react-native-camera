@@ -62,33 +62,32 @@
 
 + (CGImagePropertyOrientation)imageOrientationForInterfaceOrientation:(UIInterfaceOrientation)orientation withDevicePosition:(AVCaptureDevicePosition)position
 {
-    if (position == AVCaptureDevicePositionBack) {
+    if (position == AVCaptureDevicePositionFront) {
         switch (orientation) {
             case UIInterfaceOrientationPortrait:
-                return kCGImagePropertyOrientationRight;
+                return kCGImagePropertyOrientationLeftMirrored;
             case UIInterfaceOrientationPortraitUpsideDown:
-                return kCGImagePropertyOrientationLeft;
+                return kCGImagePropertyOrientationRightMirrored;
             case UIInterfaceOrientationLandscapeLeft:
-                return kCGImagePropertyOrientationDown;
+                return kCGImagePropertyOrientationUpMirrored;
             case UIInterfaceOrientationLandscapeRight:
-                return kCGImagePropertyOrientationUp;
+                return kCGImagePropertyOrientationDownMirrored;
             default:
                 return 0;
         }
     }
     switch (orientation) {
         case UIInterfaceOrientationPortrait:
-            return kCGImagePropertyOrientationLeftMirrored;
+            return kCGImagePropertyOrientationRight;
         case UIInterfaceOrientationPortraitUpsideDown:
-            return kCGImagePropertyOrientationRightMirrored;
+            return kCGImagePropertyOrientationLeft;
         case UIInterfaceOrientationLandscapeLeft:
-            return kCGImagePropertyOrientationUpMirrored;
+            return kCGImagePropertyOrientationDown;
         case UIInterfaceOrientationLandscapeRight:
-            return kCGImagePropertyOrientationDownMirrored;
+            return kCGImagePropertyOrientationUp;
         default:
             return 0;
     }
-
 }
 
 + (float)temperatureForWhiteBalance:(RNCameraWhiteBalance)whiteBalance
