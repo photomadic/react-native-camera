@@ -494,32 +494,21 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     if (!faceDetectionReq.results.count) {
         self.mainFaceCenter = CGPointZero;
-        [self drawFaceRect:nil];
 #ifdef DEBUG
         [self drawFaceRect:nil];
 #endif
         return;
     };
 
-//    if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
-//        [self establishPrimaryFace:faceDetectionReq];
-//    } else {
-//        //        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
-//        [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
-//    }
-
-    if (CGPointEqualToPoint(self.mainFaceCenter, CGPointZero)) {
+    if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.mainFaceCenter, CGPointZero))) {
         [self establishPrimaryFace:faceDetectionReq];
-        NSLog(@"---establish");
     } else {
         [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
-        NSLog(@"---tracking");
     }
 
     dispatch_sync(dispatch_get_main_queue(), ^() {
         CGPoint scaledPoint = CGPointMake(self.mainFaceCenter.x * self.layer.bounds.size.width, (1-self.mainFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
-        [self drawFaceRect:self.mainFace];
 #ifdef DEBUG
         [self drawFaceRect:self.mainFace];
 #endif
@@ -544,7 +533,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     VNTrackObjectRequest *trackRequest = [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:lastObservation completionHandler:^(VNRequest *request, NSError *error) {
         if (error == nil && request.results.count) {
             VNDetectedObjectObservation *observation = request.results.firstObject;
+#ifdef DEBUG
             [self drawFaceRect:observation];
+#endif
             self.mainFace = observation;
             self.mainFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
             return;
