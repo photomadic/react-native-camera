@@ -495,16 +495,16 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     if (!faceDetectionReq.results.count) {
         self.primaryFaceCenter = CGPointZero;
         [self drawFaceRect:nil];
-        #ifdef DEBUG
+#ifdef DEBUG
         [self drawFaceRect:nil];
-        #endif
+#endif
         return;
     };
 
     if (!self.canAppendBuffer || (self.canAppendBuffer && CGPointEqualToPoint(self.primaryFaceCenter, CGPointZero))) {
         [self establishPrimaryFace:faceDetectionReq];
     } else {
-//        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
+        //        [self trackPrimaryFace:faceDetectionReq:self.primaryFaceCenter];
         [self trackPrimaryFace:sampleBuffer withFace:self.mainFace];
     }
 
@@ -512,9 +512,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         CGPoint scaledPoint = CGPointMake(self.primaryFaceCenter.x * self.layer.bounds.size.width, (1-self.primaryFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
         [self drawFaceRect:self.mainFace];
-        #ifdef DEBUG
-          [self drawFaceRect:self.mainFace];
-        #endif
+#ifdef DEBUG
+        [self drawFaceRect:self.mainFace];
+#endif
         [self setExposureAtPoint:devicePoint];
     });
 }
@@ -548,11 +548,11 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 //    }
 //}
 
-- (void)trackPrimaryFace:(CMSampleBufferRef)sampleBuffer withFace:(VNDetectedObjectObservation)mainFace  API_AVAILABLE(ios(11.0)){
+- (void)trackPrimaryFace:(CMSampleBufferRef)sampleBuffer withFace:(VNDetectedObjectObservation*)mainFace  API_AVAILABLE(ios(11.0)){
     VNTrackObjectRequest *trackRequest = [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:mainFace completionHandler:^(VNRequest *_Nonnull request, NSError *_Nullable error) {
         if (error == nil && request.results.count) {
             NSLog(@"%@", request.results.firstObject);
-            VNDetectedObjectObservation observation = request.results.firstObject;
+            VNDetectedObjectObservation *observation = request.results.firstObject;
             [self drawFaceRect:observation];
             self.mainFace = observation;
             self.primaryFaceCenter = CGPointMake(CGRectGetMidX(observation.boundingBox), CGRectGetMidY(observation.boundingBox));
@@ -573,7 +573,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     [self.trackingHandler performRequests:observationRequest onCIImage:orientedImage error:nil];
 }
 
--(void)drawFaceRect:(VNFaceObservation *)observation  API_AVAILABLE(ios(11.0)){
+-(void)drawFaceRect:(VNDetectedObjectObservation *)observation  API_AVAILABLE(ios(11.0)){
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.faceRect removeFromSuperlayer];
         if (observation == nil) {
