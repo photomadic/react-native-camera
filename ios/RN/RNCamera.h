@@ -12,7 +12,6 @@
 
 @class RNCamera;
 
-API_AVAILABLE(ios(11.0))
 @interface RNCamera : UIView <AVCaptureMetadataOutputObjectsDelegate, RNFaceDetectorDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property(nonatomic, strong) dispatch_queue_t sessionQueue;
@@ -44,11 +43,11 @@ API_AVAILABLE(ios(11.0))
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
 
-@property(nonatomic, strong) VNSequenceRequestHandler *trackingHandler;
+@property(nonatomic, strong) VNSequenceRequestHandler *trackingHandler API_AVAILABLE(ios(11.0));
 @property(nonatomic, assign) CGImagePropertyOrientation facialTrackingOrientation;
 @property(nonatomic, strong) CAShapeLayer *faceRect;
 @property(nonatomic, strong) CAShapeLayer *exposureSquare;
-@property(nonatomic, strong) VNDetectedObjectObservation *mainFace;
+@property(nonatomic, strong) VNDetectedObjectObservation *mainFace API_AVAILABLE(ios(11.0));
 @property(nonatomic, assign) CGPoint mainFaceCenter;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
