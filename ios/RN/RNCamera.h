@@ -42,12 +42,13 @@
 @property(nonatomic, assign) BOOL canAppendBuffer;
 @property(nonatomic, assign) CMTime bufferTimestamp;
 @property(nonatomic, assign) Float64 maxDuration;
-@property(nonatomic, assign) CGPoint primaryFaceCenter;
-@property(nonatomic, assign) CGImagePropertyOrientation facialTrackingOrientation;
 
+@property(nonatomic, strong) VNSequenceRequestHandler *trackingHandler API_AVAILABLE(ios(11.0));
+@property(nonatomic, assign) CGImagePropertyOrientation facialTrackingOrientation;
 @property(nonatomic, strong) CAShapeLayer *faceRect;
 @property(nonatomic, strong) CAShapeLayer *exposureSquare;
-@property(nonatomic, strong) VNFaceObservation *mainFace;
+@property(nonatomic, strong) VNDetectedObjectObservation *mainFace API_AVAILABLE(ios(11.0));
+@property(nonatomic, assign) CGPoint mainFaceCenter;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
