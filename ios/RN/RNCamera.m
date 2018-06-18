@@ -495,7 +495,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     if (!faceDetectionReq.results.count) {
         self.mainFaceCenter = CGPointZero;
         #ifdef DEBUG
-            [self drawFaceRect:nil];
+        [self drawFaceRect:nil];
         #endif
         return;
     };
@@ -510,7 +510,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         CGPoint scaledPoint = CGPointMake(self.mainFaceCenter.x * self.layer.bounds.size.width, (1-self.mainFaceCenter.y) * self.layer.bounds.size.height);
         CGPoint devicePoint = [self.previewLayer captureDevicePointOfInterestForPoint:scaledPoint];
         #ifdef DEBUG
-            [self drawFaceRect:self.mainFace];
+        [self drawFaceRect:self.mainFace];
         #endif
         [self setExposureAtPoint:devicePoint];
     });
