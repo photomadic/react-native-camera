@@ -125,52 +125,24 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
+    if (![device lockForConfiguration:&error]) {
+        if (error) {
+            RCTLogError(@"%s: %@", __func__, error);
+        }
+        return;
+    }
 
     if (self.flashMode == RNCameraFlashModeTorch) {
-        if (![device hasTorch])
-            return;
-        if (![device lockForConfiguration:&error]) {
-            if (error) {
-                RCTLogError(@"%s: %@", __func__, error);
-            }
-            return;
-        }
-        if (device.hasTorch && [device isTorchModeSupported:AVCaptureTorchModeOn])
-        {
-            NSError *error = nil;
-            if ([device lockForConfiguration:&error]) {
-                [device setFlashMode:AVCaptureFlashModeOff];
-                [device setTorchMode:AVCaptureTorchModeOn];
-                [device unlockForConfiguration];
-            } else {
-                if (error) {
-                    RCTLogError(@"%s: %@", __func__, error);
-                }
-            }
+        if (device.hasTorch && [device isTorchModeSupported:AVCaptureTorchModeOn]) {
+            [device setFlashMode:AVCaptureFlashModeOff];
+            [device setTorchMode:AVCaptureTorchModeOn];
         }
     } else {
-        if (![device hasFlash])
-            return;
-        if (![device lockForConfiguration:&error]) {
-            if (error) {
-                RCTLogError(@"%s: %@", __func__, error);
+        if (device.hasFlash && [device isFlashModeSupported:self.flashMode]) {
+            if ([device isTorchModeSupported:AVCaptureTorchModeOff]) {
+                [device setTorchMode:AVCaptureTorchModeOff];
             }
-            return;
-        }
-        if (device.hasFlash && [device isFlashModeSupported:self.flashMode])
-        {
-            NSError *error = nil;
-            if ([device lockForConfiguration:&error]) {
-                if ([device isTorchModeSupported:AVCaptureTorchModeOff]) {
-                    [device setTorchMode:AVCaptureTorchModeOff];
-                }
-                [device setFlashMode:self.flashMode];
-                [device unlockForConfiguration];
-            } else {
-                if (error) {
-                    RCTLogError(@"%s: %@", __func__, error);
-                }
-            }
+            [device setFlashMode:self.flashMode];
         }
     }
 
@@ -181,7 +153,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
-
     if (![device lockForConfiguration:&error]) {
         if (error) {
             RCTLogError(@"%s: %@", __func__, error);
@@ -190,13 +161,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
 
     if ([device isFocusModeSupported:self.autoFocus]) {
-        if ([device lockForConfiguration:&error]) {
-            [device setFocusMode:self.autoFocus];
-        } else {
-            if (error) {
-                RCTLogError(@"%s: %@", __func__, error);
-            }
-        }
+        [device setFocusMode:self.autoFocus];
     }
 
     [device unlockForConfiguration];
@@ -206,7 +171,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
-
     if (![device lockForConfiguration:&error]) {
         if (error) {
             RCTLogError(@"%s: %@", __func__, error);
@@ -215,13 +179,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     }
 
     if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
-        if ([device lockForConfiguration:&error]) {
-            [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
-        } else {
-            if (error) {
-                RCTLogError(@"%s: %@", __func__, error);
-            }
-        }
+        [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
     }
 
     [device unlockForConfiguration];
@@ -257,7 +215,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 - (void)updateZoom {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
-
     if (![device lockForConfiguration:&error]) {
         if (error) {
             RCTLogError(@"%s: %@", __func__, error);
@@ -274,7 +231,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 {
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
-
     if (![device lockForConfiguration:&error]) {
         if (error) {
             RCTLogError(@"%s: %@", __func__, error);
@@ -284,7 +240,6 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
 
     if (self.whiteBalance == RNCameraWhiteBalanceAuto) {
         [device setWhiteBalanceMode:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance];
-        [device unlockForConfiguration];
     } else {
         AVCaptureWhiteBalanceTemperatureAndTintValues temperatureAndTint = {
             .temperature = [RNCameraUtils temperatureForWhiteBalance:self.whiteBalance],
@@ -292,15 +247,9 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         };
         AVCaptureWhiteBalanceGains rgbGains = [device deviceWhiteBalanceGainsForTemperatureAndTintValues:temperatureAndTint];
         __weak __typeof__(device) weakDevice = device;
-        if ([device lockForConfiguration:&error]) {
-            [device setWhiteBalanceModeLockedWithDeviceWhiteBalanceGains:rgbGains completionHandler:^(CMTime syncTime) {
-                [weakDevice unlockForConfiguration];
-            }];
-        } else {
-            if (error) {
-                RCTLogError(@"%s: %@", __func__, error);
-            }
-        }
+        [device setWhiteBalanceModeLockedWithDeviceWhiteBalanceGains:rgbGains completionHandler:^(CMTime syncTime) {
+            [weakDevice unlockForConfiguration];
+        }];
     }
 
     [device unlockForConfiguration];
@@ -575,13 +524,15 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
     AVCaptureDevice *device = [self.videoCaptureDeviceInput device];
     NSError *error = nil;
     if (![device lockForConfiguration:&error]) {
-        RCTLogError(@"%s: %@", __func__, error);
+        if (error) {
+            RCTLogError(@"%s: %@", __func__, error);
+        }
         return;
     }
+    [device setExposurePointOfInterest:point];
     if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
         [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
     }
-    [device setExposurePointOfInterest:point];
     [device unlockForConfiguration];
 }
 
